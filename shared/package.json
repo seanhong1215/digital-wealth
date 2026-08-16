@@ -13,7 +13,8 @@
   ],
   "exports": {
     ".": "./src/index.ts",
-    "./money": "./src/money.ts"
+    "./money": "./src/money.ts",
+    "./market-rules": "./src/market-rules.ts"
   },
   "types": "./src/index.ts",
 
