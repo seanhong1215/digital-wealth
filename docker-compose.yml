@@ -11,9 +11,9 @@
 #   跑一行 `docker compose up` 就能得到一模一樣的環境 —— 不會有「在我電腦上
 #   跑得起來」的問題。
 #
-# 目前階段（單元 0.1）：
-#   只有 postgres 與 redis 兩個基礎設施服務。
-#   之後會陸續加入 api（NestJS）、web（React）、market-feed（報價產生器），
+# 目前階段（單元 0.6）：
+#   postgres、redis 兩個基礎設施 ＋ api（NestJS）。
+#   之後會再加入 web（React，單元 1.2）與 market-feed（報價產生器，單元 2.1），
 #   最終是 docs/00-architecture.md 裡的 5 服務拓撲。
 #
 # 注意：新版 Docker Compose 已不需要頂層的 `version:` 欄位，寫了反而會警告。
@@ -142,6 +142,90 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  # ============================================================================
+  # api — NestJS 後端（單元 0.6）
+  #
+  # 帳務與交易核心。啟動時會自動套用 migration 與寫入種子資料，
+  # 所以 `docker compose up` 之後直接就有一個裝滿假資料的可用系統
+  # ——這是 PROJECT.md P0 的完成判準：「一行啟動，無任何手動步驟」。
+  #
+  # 啟動流程寫在 api/docker-entrypoint.sh。
+  # ============================================================================
+  api:
+    # 這裡用 build 而不是 image，因為這是我們自己的程式碼。
+    #
+    # context 是**專案根目錄**（`.`）而不是 `./api` —— 因為 npm workspaces
+    # 的相依定義在根目錄，而且 api 依賴 shared 的原始碼。
+    # dockerfile 則指向 api 目錄下的那份。
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+
+    container_name: fintech-api
+    restart: unless-stopped
+
+    environment:
+      NODE_ENV: development
+      TZ: Asia/Taipei
+
+      # ★ 主機名稱用「服務名」而不是 localhost。
+      #
+      # 這是新手最常卡住的地方：在容器內，localhost 指的是**這個容器自己**，
+      # 不是你的電腦。要連別的容器，得用 Compose 的服務名 ——
+      # Docker 內建的 DNS 會把 `postgres` 解析成該容器的 IP。
+      #
+      # 對照：你在 WSL 裡跑 `npm run start:dev -w @fintech/api` 時，
+      # 用的是 .env 裡的預設值 localhost，走的是上面 ports 映射出來的通道。
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+      API_PORT: 3000
+
+    ports:
+      # 容器內固定 3000，主機端可由 .env 的 API_PORT 調整
+      # （3000 被其他程式佔用時很有用）。
+      - "${API_PORT:-3000}:3000"
+
+    # ★ 等待相依服務「真的可用」才啟動，而不只是「容器已建立」。
+    #
+    # condition: service_healthy 會等到上面定義的 healthcheck 通過。
+    # 沒有這個條件的話，api 會在 postgres 還在初始化時就去連線，
+    # 然後因為 DatabaseService 的快速失敗設計而直接退出。
+    #
+    # ⚠️ 注意 redis 用的是同樣的條件，但 api 的程式其實**允許 Redis 連不上**
+    #    （RedisService 只記警告不中斷）。這裡仍然等它，是因為正常啟動時
+    #    多等兩秒沒有代價，而讓服務在完整狀態下啟動比較好推理。
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    # 健康檢查打的是 api 自己的 /health 端點。
+    #
+    # 為什麼用 node 而不是 curl：slim 映像沒有裝 curl，
+    # 為了健康檢查多裝一個工具不划算。node 本來就在裡面。
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3000/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      # migration 與 seed 要跑一段時間（heavy-history 情境有 8000 筆），
+      # 給足緩衝期，否則容器會在還在寫資料時就被判定不健康。
+      start_period: 60s
 
 # ==============================================================================
 # Volumes（具名資料卷）

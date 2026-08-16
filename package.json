@@ -21,12 +21,18 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --build --force",
+    "typecheck": "tsc --build --force && npm run typecheck -w @fintech/api",
+
+    "dev:api": "npm run start:dev -w @fintech/api",
+    "migrate": "npm run migrate -w @fintech/api",
+    "seed": "npm run seed -w @fintech/api",
+
     "up": "docker compose up -d",
     "down": "docker compose down",
     "logs": "docker compose logs -f",
     "db": "docker exec -it fintech-postgres psql -U fintech -d fintech",
-    "redis": "docker exec -it fintech-redis redis-cli"
+    "redis": "docker exec -it fintech-redis redis-cli",
+    "health": "curl -s http://localhost:3000/api/v1/health"
   },
   "devDependencies": {
     "typescript": "^5.7.0",
