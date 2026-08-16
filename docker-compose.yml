@@ -1,0 +1,169 @@
+# ==============================================================================
+# docker-compose.yml — 本專案的服務編排定義
+#
+# 這個檔案是什麼：
+#   描述本專案需要哪些「服務」（service），每個服務用什麼映像、開什麼 port、
+#   資料存在哪裡。執行 `docker compose up` 時，Docker 會照這個檔案把所有
+#   容器建立並啟動起來。
+#
+# 為什麼存在：
+#   本專案不做雲端部署（見 docs/adr/0004），面試官或任何人只要有 Docker，
+#   跑一行 `docker compose up` 就能得到一模一樣的環境 —— 不會有「在我電腦上
+#   跑得起來」的問題。
+#
+# 目前階段（單元 0.1）：
+#   只有 postgres 與 redis 兩個基礎設施服務。
+#   之後會陸續加入 api（NestJS）、web（React）、market-feed（報價產生器），
+#   最終是 docs/00-architecture.md 裡的 5 服務拓撲。
+#
+# 注意：新版 Docker Compose 已不需要頂層的 `version:` 欄位，寫了反而會警告。
+# ==============================================================================
+
+services:
+  # ============================================================================
+  # postgres — 權威資料儲存
+  #
+  # 存放帳戶、持倉、委託、成交、交易明細等所有「必須正確」的資料。
+  # 選 PostgreSQL 的原因是下單需要 ACID 交易與行鎖（SELECT ... FOR UPDATE），
+  # 詳見 docs/02-backend.md 的「交易一致性設計」。
+  # ============================================================================
+  postgres:
+    # 映像版本說明：
+    #   - `16` 是 PostgreSQL 主版本，`alpine` 是精簡版 Linux 基底（體積小很多）
+    #   - 開發期用 `16-alpine`，會自動取得 16.x 的最新修補版
+    #   - 【封版時要改】改成完整版本號（例如 `16.10-alpine`）把版本 pin 死，
+    #     避免半年後重新 build 時基底變了導致行為不同。見 PROJECT.md §11
+    image: postgres:16-alpine
+
+    # 容器名稱。不設的話 Docker 會自動產生像 fintech-postgres-1 這種名字，
+    # 明確命名之後 `docker logs fintech-postgres` 這類指令比較好打。
+    container_name: fintech-postgres
+
+    # 重啟策略：
+    #   unless-stopped = 容器異常結束時自動重啟，但如果是你手動 stop 的就不重啟。
+    #   這樣電腦重開機後容器會自己回來，但你刻意停掉的不會被吵醒。
+    restart: unless-stopped
+
+    # 環境變數 —— postgres 映像會讀這三個變數來初始化資料庫。
+    # 值來自同目錄的 .env 檔（Compose 會自動載入）。
+    # 寫成 ${VAR} 而不是直接寫死，是為了讓密碼不進版控。
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      # 讓容器內的時間顯示為台北時間，方便你用 psql 看資料時對照。
+      # 注意：這不影響資料庫實際儲存的時間 —— 我們所有時間欄位都用
+      # TIMESTAMPTZ（含時區），儲存時一律轉為 UTC，顯示時才轉當地時間。
+      TZ: Asia/Taipei
+
+    # Port 映射，格式是「主機端:容器內」。
+    #   - 左邊 5432 是你在 WSL 裡用 psql 連線要打的 port
+    #   - 右邊 5432 是容器內部 postgres 監聽的 port（固定不變）
+    #   - ${POSTGRES_PORT:-5432} 的意思是「用 .env 的 POSTGRES_PORT，
+    #     沒設定就用預設值 5432」
+    #
+    # 其他服務（例如之後的 api）要連資料庫時，不走這個 port，
+    # 而是直接用服務名 `postgres:5432` —— 因為它們在同一個 Docker 網路裡。
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+
+    # Volume（資料卷）—— 容器的檔案系統是「用完即丟」的，
+    # 容器一刪，裡面的資料就沒了。
+    # 把 postgres 存資料的目錄掛到一個具名 volume，資料就會留在主機上，
+    # 即使 `docker compose down` 把容器刪掉，下次啟動資料還在。
+    #
+    # 【要清空資料重來時】用 `docker compose down -v`，那個 -v 會連 volume 一起刪。
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    # Healthcheck（健康檢查）★ 這段是新手最常漏掉、也最常踩坑的地方
+    #
+    # 問題是什麼：
+    #   容器「啟動了」不等於裡面的服務「可以用了」。PostgreSQL 容器起來後，
+    #   還要花幾秒初始化資料庫才能接受連線。
+    #   如果 api 服務在這幾秒內就去連，會直接連線失敗然後掛掉。
+    #
+    # 只用 depends_on 為什麼不夠：
+    #   depends_on 只保證「容器啟動順序」，不保證「服務已就緒」。
+    #   Docker 看到 postgres 容器 started 就會去啟動 api，但那時 postgres
+    #   可能還在初始化。
+    #
+    # healthcheck 怎麼解決：
+    #   定期執行一個指令來判斷服務是否真的可用。搭配 api 那邊寫
+    #   `depends_on: postgres: condition: service_healthy`，
+    #   Docker 就會等到這個檢查通過才啟動 api。
+    healthcheck:
+      # pg_isready 是 postgres 內建的就緒檢查工具，回傳 0 表示可以接受連線。
+      # 用 CMD-SHELL 而不是 CMD，是因為指令裡有 ${} 變數需要 shell 展開。
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s      # 每 5 秒檢查一次
+      timeout: 5s       # 單次檢查超過 5 秒視為失敗
+      retries: 10       # 連續失敗 10 次才標記為 unhealthy
+      start_period: 10s # 前 10 秒的失敗不計入 retries（給初始化緩衝時間）
+
+  # ============================================================================
+  # redis — 快取與訊息匯流排
+  #
+  # 本專案只賦予它兩個明確職責（見 docs/adr/0003）：
+  #   1. 報價 pub/sub 扇出 —— market-feed 發布報價，api 訂閱後推給 WebSocket
+  #   2. 下單冪等鍵 —— SET NX EX 300，擋掉使用者連點兩次造成的重複委託
+  #
+  # 沒有這兩個理由的話，以本專案的資料量根本不需要 Redis，
+  # 硬加就變成「履歷驅動開發」，面試時答不出來反而扣分。
+  # ============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: fintech-redis
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Taipei
+
+    # --appendonly yes 開啟 AOF（Append Only File）持久化。
+    #
+    # 為什麼要開：
+    #   Redis 預設把資料放在記憶體，重啟就全沒了。
+    #   我們的冪等鍵如果因為 Redis 重啟而消失，重複下單的防線就破了一層。
+    #
+    # 那為什麼還需要資料庫的 UNIQUE 約束？
+    #   AOF 也不是 100% 不丟資料（預設每秒同步一次，最多可能丟 1 秒的寫入）。
+    #   所以冪等是「雙層防護」：Redis 是快速路徑，資料庫 UNIQUE 是最終保證。
+    #   詳見 docs/02-backend.md 的 orders 表說明。
+    command: redis-server --appendonly yes
+
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+
+    volumes:
+      - redis_data:/data
+
+    healthcheck:
+      # redis-cli ping 正常會回 PONG
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+# ==============================================================================
+# Volumes（具名資料卷）
+#
+# 在這裡宣告後，上面的服務才能用 `- postgres_data:/path` 的形式掛載。
+# 實際檔案由 Docker 管理，放在 /var/lib/docker/volumes/ 底下。
+#
+# 查看：docker volume ls
+# 刪除：docker compose down -v（會連同容器一起刪掉資料）
+# ==============================================================================
+volumes:
+  postgres_data:
+  redis_data:
+
+# ==============================================================================
+# 關於「網路」
+#
+# 這個檔案沒有寫 networks 設定，因為 Compose 會自動建立一個預設網路，
+# 把所有服務放進去。同一個網路裡的容器可以直接用「服務名」互相連線：
+#
+#   api 要連資料庫  → postgres:5432   （不是 localhost:5432）
+#   api 要連 Redis  → redis:6379
+#
+# 這是 Docker 內建的 DNS 解析。之後寫 api 的連線字串時會用到這件事。
+# ==============================================================================
