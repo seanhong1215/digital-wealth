@@ -1,0 +1,36 @@
+{
+  "name": "fintech",
+  "version": "0.1.0",
+  "private": true,
+  "description": "數位財富管理全端作品集 — React 19 + NestJS + PostgreSQL + Redis",
+  "type": "module",
+  "//workspaces": [
+    "workspaces 只列出「已經有 package.json」的子專案。",
+    "npm 找不到對應的 package.json 會直接報錯，所以不能先寫好佔位。",
+    "後續單元建立子專案時，記得回來把名字加進下面這個陣列：",
+    "  api         → 單元 0.6（NestJS 骨架）",
+    "  web         → 單元 1.2（前端接上 API）",
+    "  market-feed → 單元 2.1（報價產生器）"
+  ],
+  "workspaces": [
+    "shared"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --build --force",
+    "up": "docker compose up -d",
+    "down": "docker compose down",
+    "logs": "docker compose logs -f",
+    "db": "docker exec -it fintech-postgres psql -U fintech -d fintech",
+    "redis": "docker exec -it fintech-redis redis-cli"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0",
+    "@types/node": "^22.10.0"
+  }
+}

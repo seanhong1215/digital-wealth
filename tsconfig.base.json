@@ -1,0 +1,109 @@
+{
+  // ============================================================================
+  // tsconfig.base.json — 所有子專案共用的 TypeScript 編譯設定
+  //
+  // 這個檔案是什麼：
+  //   TypeScript 的設定可以繼承。這個檔案放「所有子專案都該遵守」的規則，
+  //   shared / api / web / market-feed 各自的 tsconfig.json 用 "extends"
+  //   繼承它，再補上自己特有的設定。
+  //
+  // 為什麼存在：
+  //   避免四個子專案各寫一份設定然後慢慢走鐘 —— 例如 api 開了 strict、
+  //   web 忘了開，型別安全就出現破口。共用基底讓規則只有一個來源。
+  // ============================================================================
+
+  "compilerOptions": {
+    // --------------------------------------------------------------------
+    // 編譯目標
+    // --------------------------------------------------------------------
+
+    // 編譯後要輸出哪個版本的 JavaScript。
+    // ES2022 支援 class fields、at()、Object.hasOwn 等，Node 20+ 與現代瀏覽器都支援。
+    "target": "ES2022",
+
+    // 模組系統用 ESM（import/export）而非 CommonJS（require）。
+    // "NodeNext" 讓 TypeScript 依照 package.json 的 "type" 欄位自動判斷。
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+
+    // 編譯時要引入哪些內建型別定義。
+    // ES2022 是語言本身，DOM 是瀏覽器 API（web 專案需要）。
+    "lib": ["ES2022"],
+
+    // --------------------------------------------------------------------
+    // 型別嚴格度 ★ 本專案的核心要求
+    //
+    // PROJECT.md §6 明訂 TypeScript `strict`。
+    // strict: true 會一次開啟下面這一整組檢查，這裡把幾個特別重要的
+    // 額外列出來，是為了讓你知道它們各自在防什麼。
+    // --------------------------------------------------------------------
+
+    // 開啟所有嚴格檢查的總開關
+    "strict": true,
+
+    // 陣列或物件用索引存取時，型別要包含 undefined。
+    // 例如 const arr: string[] = []; arr[0] 的型別會是 string | undefined，
+    // 逼你處理「取不到」的情況。
+    // 這在處理 API 回傳的陣列時特別重要 —— 假設有值就是 bug 的溫床。
+    "noUncheckedIndexedAccess": true,
+
+    // 宣告了卻沒用到的區域變數 / 參數會報錯。
+    // 保持程式碼乾淨，也常常能抓出「改到一半忘記收尾」的地方。
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+
+    // switch 的 case 之間不允許意外掉落（fallthrough）。
+    // 除非你明確寫 break 或 return。
+    "noFallthroughCasesInSwitch": true,
+
+    // 函式的所有分支都必須有回傳值（如果宣告了回傳型別）。
+    "noImplicitReturns": true,
+
+    // 用 override 關鍵字才能覆寫父類別方法，避免打錯字造成的無聲失敗。
+    "noImplicitOverride": true,
+
+    // --------------------------------------------------------------------
+    // 匯入與相容性
+    // --------------------------------------------------------------------
+
+    // 允許 import React from 'react' 這種寫法（即使套件是 CommonJS）。
+    "esModuleInterop": true,
+
+    // 允許 import * as X 的預設匯入語法。
+    "allowSyntheticDefaultImports": true,
+
+    // 檔名大小寫必須一致。
+    // Linux 檔案系統區分大小寫、macOS/Windows 不區分 —— 沒開這個的話，
+    // 在 macOS 上跑得好好的專案到了 Docker(Linux) 裡會找不到檔案。
+    "forceConsistentCasingInFileNames": true,
+
+    // 每個檔案都能獨立編譯（不依賴其他檔案的型別資訊）。
+    // Vite、esbuild、SWC 這類工具需要這個設定。
+    "isolatedModules": true,
+
+    // 匯入型別時強制寫 import type，讓編譯器能安全地把它整段移除。
+    "verbatimModuleSyntax": true,
+
+    // --------------------------------------------------------------------
+    // 輸出
+    // --------------------------------------------------------------------
+
+    // 產生 .d.ts 型別宣告檔，讓其他 workspace 能取得型別。
+    "declaration": true,
+    "declarationMap": true,
+
+    // 產生 source map，除錯時能對應回原始 .ts 檔。
+    "sourceMap": true,
+
+    // 跳過對 node_modules 裡 .d.ts 的檢查。
+    // 不跳的話，任何一個第三方套件的型別問題都會讓你的專案編譯失敗。
+    "skipLibCheck": true,
+
+    // 支援 TypeScript 的 Project References（多專案協同編譯）。
+    "composite": true
+  },
+
+  // 這個檔案只是基底，不直接編譯任何檔案。
+  // 各子專案的 tsconfig.json 會自己指定 include。
+  "exclude": ["node_modules", "dist"]
+}
