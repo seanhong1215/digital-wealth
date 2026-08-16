@@ -1,0 +1,53 @@
+{
+  "name": "@fintech/api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "NestJS 後端 — 帳務與交易核心",
+  "type": "module",
+
+  "//執行方式": [
+    "本專案不做 nest build。理由：",
+    "  1. shared 直接匯出未編譯的 .ts（見 shared/package.json 的說明），",
+    "     nest build 的 tsc 不會編譯 rootDir 之外的檔案，會直接失敗。",
+    "  2. 部署目標只有本機 Docker Compose（adr/0004），沒有雲端 cold start",
+    "     的效能壓力，執行期轉譯的成本可以接受。",
+    "",
+    "所以一律用 SWC 在執行期轉譯。為什麼是 SWC 而不是 tsx/esbuild：",
+    "  NestJS 的依賴注入靠 emitDecoratorMetadata 產生的型別資訊來得知",
+    "  『這個 constructor 參數要注入哪個 provider』。esbuild 不支援這個選項，",
+    "  用 tsx 跑 NestJS 會在啟動時噴 Nest can't resolve dependencies。",
+    "  SWC 有支援，設定在 .swcrc 的 decoratorMetadata。"
+  ],
+
+  "//環境變數": [
+    "--env-file-if-exists 是 Node 20.6+ 內建的 .env 載入功能，",
+    "所以本專案不需要 dotenv 套件。用 if-exists 版本是因為在 Docker 容器內",
+    "沒有 .env 檔（變數由 docker-compose 的 environment 直接注入），",
+    "用 --env-file 會因為找不到檔案而啟動失敗。"
+  ],
+
+  "scripts": {
+    "start:dev": "node --env-file-if-exists=../.env --import @swc-node/register/esm-register --watch src/main.ts",
+    "start": "node --env-file-if-exists=../.env --import @swc-node/register/esm-register src/main.ts",
+    "migrate": "node --env-file-if-exists=../.env --import @swc-node/register/esm-register src/database/migrate.ts",
+    "seed": "node --env-file-if-exists=../.env --import @swc-node/register/esm-register src/database/seeds/seed.ts",
+    "typecheck": "tsc --noEmit"
+  },
+
+  "dependencies": {
+    "@fintech/shared": "*",
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/platform-express": "^11.0.0",
+    "pg": "^8.13.0",
+    "redis": "^4.7.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.0"
+  },
+
+  "devDependencies": {
+    "@swc-node/register": "^1.10.0",
+    "@swc/core": "^1.10.0",
+    "@types/pg": "^8.11.0"
+  }
+}

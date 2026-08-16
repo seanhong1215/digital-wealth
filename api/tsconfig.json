@@ -1,0 +1,59 @@
+{
+  // api 的 TypeScript 設定。繼承根目錄的共用基底，只補上這個 workspace 特有的部分。
+  //
+  // ⚠️ 注意：這份設定只用於**型別檢查**（npm run typecheck）。
+  //    實際執行時是由 SWC 依 .swcrc 轉譯的，兩者的設定要保持語意一致。
+  //    這是「不做 build，改用執行期轉譯」的代價之一。
+  "extends": "../tsconfig.base.json",
+
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist",
+
+    // api 跑在 Node 上，不碰瀏覽器 API，所以 lib 不含 DOM。
+    "lib": ["ES2022"],
+    "types": ["node"],
+
+    // ------------------------------------------------------------------
+    // NestJS 需要的兩個裝飾器選項
+    // ------------------------------------------------------------------
+
+    // 啟用裝飾器語法（@Injectable()、@Controller()、@Get()…）。
+    // 這是 TypeScript 的舊版（stage 2）裝飾器實作，NestJS 目前依賴它。
+    "experimentalDecorators": true,
+
+    // ★ 依賴注入的關鍵。
+    //
+    // 開啟後，編譯器會把 constructor 參數的**型別資訊**寫進編譯產物：
+    //
+    //   constructor(private db: DatabaseService) {}
+    //                           ^^^^^^^^^^^^^^^
+    //                           這個型別會被記錄成 metadata
+    //
+    // NestJS 在啟動時讀取這份 metadata，才知道要注入哪個 provider。
+    // 關掉的話，每個注入點都得手寫 @Inject(TOKEN)。
+    //
+    // 這也是本專案執行期用 SWC 而不是 esbuild/tsx 的原因 ——
+    // esbuild 不支援產生這份 metadata。
+    "emitDecoratorMetadata": true,
+
+    // ------------------------------------------------------------------
+    // 與 shared 的搭配
+    // ------------------------------------------------------------------
+
+    // shared 直接匯出未編譯的 .ts，型別檢查時要能一路讀進去。
+    // 關掉 composite 的 declaration 需求，避免 tsc --build 想幫 shared 產生
+    // .d.ts 而與 shared 自己的建置衝突。
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+
+    // verbatimModuleSyntax 要求型別匯入一律寫 `import type`。
+    // NestJS 有些介面（OnModuleInit）只作為型別使用，必須這樣寫，
+    // 否則 SWC 會保留一個執行期不存在的匯入而爆掉。
+    "verbatimModuleSyntax": true
+  },
+
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts"]
+}
