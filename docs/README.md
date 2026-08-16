@@ -15,6 +15,7 @@
 | [`02-backend.md`](02-backend.md) | ER 圖、Schema、索引、**交易一致性**、API 表、WS 協定、錯誤碼、認證 | 寫後端任何程式碼之前 |
 | [`03-presentation.md`](03-presentation.md) | 格式化規範、狀態推導、圖表建議、**警示策略** | 寫任何顯示資料的元件之前 |
 | [`04-design-system.md`](04-design-system.md) | Design Token（色階、字級、間距）、元件清單 | 寫任何 UI 之前 |
+| [`07-reading-guide.md`](07-reading-guide.md) | **程式碼閱讀路線圖** —— 從哪個檔案開始讀、每一站要理解什麼、學習檢查點 | **不知道從哪裡開始讀程式碼時** |
 
 ## 頁面實作規格
 
@@ -39,6 +40,8 @@
 | [0007](adr/0007-merge-overview-and-positions.md) | 總覽與持倉合併單頁 | 使用者情境是「三十秒快速查看」 |
 | [0008](adr/0008-order-step-in-url-data-in-memory.md) | 下單步驟走路由、資料不持久化 | 下單草稿本來就不該被還原 |
 | [0009](adr/0009-defer-dark-mode.md) | 不做深色模式，但 token 預留 | 是工作量不是技術難度 |
+| [0010](adr/0010-raw-sql-over-orm.md) | 原生 SQL，不用 ORM | 行鎖與 cursor 分頁在 ORM 底下都要繞回原生 SQL |
+| [0011](adr/0011-runtime-transpile-no-build.md) | api 不做 build，執行期用 SWC 轉譯 | shared 直接匯出 .ts，而 NestJS 的 DI 需要 decorator metadata |
 
 ---
 
