@@ -5,11 +5,7 @@
  *   整個 NestJS 應用的組裝點。所有模組都要（直接或間接）掛在這裡，
  *   沒掛上來的模組等於不存在。
  *
- * 為什麼存在：
- *   NestJS 的模組系統是一棵樹，這是樹根。框架從這裡開始遞迴地
- *   建立所有 provider、註冊所有路由。
- *
- * ── 讀這個檔案就能知道整個服務有哪些功能 ────────────────────────────
+ * ── 讀這個檔案就能知道整個服務有哪些功能 ────────────────────────
  *
  *   這是 NestJS 架構的一個好處：`imports` 陣列就是服務的功能清單。
  *   下面的註解刻意保留了尚未實作的模組，讓這份清單同時是進度表。
@@ -18,9 +14,17 @@
  */
 
 import { Module } from '@nestjs/common';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
+import { JwtAuthGuard } from './common/guards/jwt-auth.guard.js';
 import { DatabaseModule } from './database/database.module.js';
+import { AccountsModule } from './modules/accounts/accounts.module.js';
+import { AuthModule } from './modules/auth/auth.module.js';
 import { HealthModule } from './modules/health/health.module.js';
+import { InstrumentsModule } from './modules/instruments/instruments.module.js';
+import { PortfolioModule } from './modules/portfolio/portfolio.module.js';
+import { TransactionsModule } from './modules/transactions/transactions.module.js';
 import { RedisModule } from './redis/redis.module.js';
 
 @Module({
@@ -30,17 +34,63 @@ import { RedisModule } from './redis/redis.module.js';
     RedisModule,
 
     // ── 業務模組 ───────────────────────────────────────────────────
-    HealthModule,
+    HealthModule, //       GET  /health
+    AuthModule, //         POST /auth/login｜/auth/logout｜GET /auth/me
+    AccountsModule, //     GET  /accounts/me
+    InstrumentsModule, //  GET  /instruments｜/instruments/:symbol
+    PortfolioModule, //    GET  /portfolio/summary｜/portfolio/snapshots｜/positions
+    TransactionsModule, // GET  /transactions
 
     // 【後續單元回來加】目錄已建好，等對應單元實作：
-    //   AuthModule         → 單元 1.1（JWT 簽發與驗證）
-    //   AccountsModule     → 單元 1.1（帳戶、餘額）
-    //   InstrumentsModule  → 單元 1.1（標的基本資料）
-    //   PositionsModule    → 單元 1.1（持倉、成本）
-    //   TransactionsModule → 單元 1.8（明細、cursor 分頁）
-    //   QuotesModule       → 單元 2.3（WebSocket Gateway、Redis 訂閱）
-    //   OrdersModule       → 單元 3.1（下單：transaction + 行鎖 + 冪等）
-    //   DemoModule         → 單元 4.3（故障注入，動態模組）
+    //   QuotesModule  → 單元 2.3（WebSocket Gateway、Redis 訂閱）
+    //   OrdersModule  → 單元 3.1（下單：transaction + 行鎖 + 冪等）
+    //   DemoModule    → 單元 4.3（故障注入，動態模組）
+  ],
+
+  providers: [
+    /**
+     * ── 全域 Guard：預設全部端點都要認證 ★ ────────────────────────
+     *
+     * `APP_GUARD` 是 NestJS 提供的特殊 token。用它註冊的 Guard 會套用到
+     * **每一個端點**，不需要在每個 Controller 寫 `@UseGuards(...)`。
+     *
+     * 為什麼要「預設認證、例外才公開」而不是反過來：
+     *
+     *   忘記加 Guard   → API 裸奔，任何人都能讀別人的帳戶，
+     *                    而且**不會有任何錯誤，你永遠不會發現**
+     *   忘記加 @Public → 登入頁打不開回 401，第一次測試就發現
+     *
+     * **讓失誤往「拒絕」的方向倒，而不是往「放行」。**
+     * 這叫 fail-safe / secure by default。
+     *
+     * 目前只有 POST /auth/login、POST /auth/logout、GET /health
+     * 標記了 @Public()。
+     *
+     * 用 provider 的形式註冊（而不是 main.ts 的 app.useGlobalGuards）
+     * 是因為這個 Guard 需要注入 Reflector 與 JwtService ——
+     * 只有走 DI 容器才拿得到。
+     */
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+
+    /**
+     * ── 全域 Exception Filter：統一錯誤回應格式 ────────────────────
+     *
+     * 所有未被接住的錯誤都會經過它，翻譯成同一個形狀：
+     *
+     *   { error: { code, message, details?, traceId } }
+     *
+     * 前端只要檢查 `error.code` 就好，不用為每種錯誤來源各寫一套解析。
+     *
+     * 同樣用 provider 形式註冊，理由與 Guard 相同（未來要注入服務時
+     * 才不用改註冊方式）。
+     */
+    {
+      provide: APP_FILTER,
+      useClass: AllExceptionsFilter,
+    },
   ],
 })
 export class AppModule {}
