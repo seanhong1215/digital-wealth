@@ -119,6 +119,24 @@ export const env = {
     host: optional('REDIS_HOST', 'localhost'),
     port: optionalInt('REDIS_PORT', 6379),
   },
+
+  /**
+   * JWT 簽章密鑰。★ 本專案最敏感的設定
+   *
+   * 這把密鑰決定「誰能簽出有效的 token」。任何人拿到它就能偽造出
+   * 任意身分的 token —— 整套認證直接失效。
+   *
+   * 所以它用 `required()` 而不是 `optional()` 給預設值：
+   *   **寧可服務起不來，也不要用一把大家都知道的預設密鑰在跑。**
+   *
+   *   如果給了預設值（例如 'dev-secret'），很容易發生的事是：
+   *   有人忘了設，服務照常啟動、功能全部正常，沒有任何人發現 ——
+   *   直到某天這個專案被部署到別的地方，而攻擊者知道原始碼裡
+   *   那把預設密鑰是什麼。
+   *
+   * 產生方式：openssl rand -base64 32
+   */
+  jwtSecret: required('JWT_SECRET'),
 } as const;
 
 /** 是否為正式環境。用在錯誤回應要不要帶 stack trace 之類的判斷。 */

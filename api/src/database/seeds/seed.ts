@@ -25,6 +25,7 @@
 import pg from 'pg';
 
 import { env } from '../../config/env.js';
+import { AuthService } from '../../modules/auth/auth.service.js';
 import { buildSeedData, type AccountScenario, type SeedData } from './factory.js';
 import { INSTRUMENT_SEEDS } from './instruments.js';
 
@@ -34,17 +35,22 @@ const { Client } = pg;
 const DEMO_EMAIL = 'demo@fintech.local';
 
 /**
- * demo 帳號的密碼雜湊。
+ * demo 帳號的密碼（明文）。
  *
- * ⚠️ **目前是佔位字串，登入一定會失敗** —— 這是預期的，
- *    認證要到單元 1.1 才實作。屆時會用 bcrypt（cost factor 12）
- *    產生真正的雜湊寫在這裡。
+ * ⚠️ **明文密碼寫在原始碼裡，一般情況下是嚴重的安全問題。**
  *
- *    刻意放一個明顯是佔位符的字串，而不是隨便找一個看起來像 bcrypt 的值，
- *    是為了讓「認證還沒做」這件事在讀 seed 時一眼可見，
- *    而不是等到登入失敗才去猜原因。
+ *    這裡可以這麼做，前提非常明確：
+ *      1. 這是**刻意公開**的示範帳號，本來就要讓面試官登入
+ *      2. 專案不做線上部署（ADR 0004），只跑在本機
+ *      3. 帳號沒有任何真實資料，也沒有任何真實權限
+ *
+ *    README 會寫明這組帳密。真實系統絕不可比照辦理。
+ *
+ * 雜湊在 seed 執行時才用 bcrypt 現算（見下方 main()），
+ * 而不是寫死一串雜湊值 —— 這樣改密碼只要改這一行，
+ * 而且雜湊用的 cost factor 永遠與 AuthService 一致。
  */
-const DEMO_PASSWORD_HASH = 'PLACEHOLDER_SET_IN_UNIT_1.1';
+const DEMO_PASSWORD = 'demo1234';
 
 /** 合法的情境名稱，用於驗證 CLI 參數。 */
 const VALID_SCENARIOS: readonly AccountScenario[] = [
@@ -271,7 +277,7 @@ async function main(): Promise<void> {
     const { rows: userRows } = await client.query<{ id: string }>(
       `INSERT INTO users (email, password_hash, display_name)
        VALUES ($1, $2, $3) RETURNING id`,
-      [DEMO_EMAIL, DEMO_PASSWORD_HASH, '示範帳戶'],
+      [DEMO_EMAIL, await AuthService.hashPassword(DEMO_PASSWORD), '示範帳戶'],
     );
     const userId = userRows[0]?.id;
     if (userId === undefined) throw new Error('建立使用者後沒有拿到 id');
@@ -346,7 +352,7 @@ async function main(): Promise<void> {
 
     console.log('\n寫入完成。');
     console.log(`  帳戶餘額：NT$ ${(Number(data.cashBalanceCents) / 100).toLocaleString('en-US')}`);
-    console.log(`  demo 帳號：${DEMO_EMAIL}（密碼待單元 1.1 設定）`);
+    console.log(`  demo 帳號：${DEMO_EMAIL} / ${DEMO_PASSWORD}`);
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
