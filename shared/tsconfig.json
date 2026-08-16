@@ -1,0 +1,20 @@
+{
+  // shared 的 TypeScript 設定。
+  // 繼承根目錄的 tsconfig.base.json，只補上這個 workspace 特有的部分。
+  "extends": "../tsconfig.base.json",
+
+  "compilerOptions": {
+    // 原始碼在 src/，編譯輸出放 dist/
+    "rootDir": "./src",
+    "outDir": "./dist",
+
+    // shared 是純邏輯層，不碰瀏覽器 API，所以 lib 不含 DOM。
+    // 這是刻意的限制 —— 如果有人不小心在 shared 裡寫了 document.querySelector，
+    // TypeScript 會直接報錯，因為這段程式碼也要能在 Node 後端跑。
+    "lib": ["ES2022"],
+    "types": ["node"]
+  },
+
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts"]
+}

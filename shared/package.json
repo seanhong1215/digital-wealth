@@ -1,0 +1,23 @@
+{
+  "name": "@fintech/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "前後端共用的契約層 — zod schema、金額運算、錯誤碼",
+  "type": "module",
+
+  "//": [
+    "exports 直接指向 TypeScript 原始碼（./src/index.ts），而不是編譯後的 dist。",
+    "這樣改了 shared 的程式碼，web 與 api 立刻就會看到，不需要先 build 一次。",
+    "可行的原因是消費端（Vite、Vitest、NestJS 的 SWC）都能直接處理 .ts。",
+    "代價：shared 不能單獨發布到 npm。但本專案不需要發布，所以沒差。"
+  ],
+  "exports": {
+    ".": "./src/index.ts",
+    "./money": "./src/money.ts"
+  },
+  "types": "./src/index.ts",
+
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}
