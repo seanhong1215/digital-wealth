@@ -26,6 +26,7 @@ import 'reflect-metadata';
 
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import cookieParser from 'cookie-parser';
 
 import { AppModule } from './app.module.js';
 import { env } from './config/env.js';
@@ -64,6 +65,22 @@ async function bootstrap(): Promise<void> {
    * 所有前端呼叫都得改一遍。
    */
   app.setGlobalPrefix('api/v1');
+
+  /**
+   * Cookie 解析。
+   *
+   * Express 預設**不會**解析 Cookie 標頭 —— `request.cookies` 是 undefined。
+   * 這個 middleware 把 `Cookie: access_token=xxx; foo=bar` 這串字串
+   * 解析成 `{ access_token: 'xxx', foo: 'bar' }` 物件。
+   *
+   * ⚠️ 沒有這一行，JwtAuthGuard 會永遠讀不到 token，
+   *    所有需要認證的端點都會回 401 —— 而且錯誤訊息完全看不出原因
+   *    （看起來就像「token 沒帶」，但其實是帶了卻沒被解析）。
+   *
+   * 註冊順序有意義：必須在 Guard 執行之前，所以放在這裡
+   * （middleware 比 Guard 早執行）。
+   */
+  app.use(cookieParser());
 
   /**
    * CORS（跨來源資源共用）。

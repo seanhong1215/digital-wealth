@@ -25,11 +25,22 @@
  * `@Controller('health')` 的參數是路由前綴。搭配 main.ts 設定的
  * 全域前綴 `api/v1`，完整路徑就是 `/api/v1/health`。
  *
+ * ── 為什麼標記 @Public() ──────────────────────────────────────────
+ *
+ * 單元 1.1 起，所有端點預設都需要認證（全域 JwtAuthGuard）。
+ * 健康檢查必須排除在外，理由有二：
+ *   1. Docker 的 healthcheck 不會帶 token，被擋下的話容器永遠不健康
+ *   2. 監控系統要能在「所有人都登不進去」時仍然探測得到服務狀態
+ *
+ * 它回傳的內容不含任何業務資料，公開沒有風險。
+ *
  * 對照 Spring Boot：`@Controller` ≈ `@RestController`，
  * `@Get()` ≈ `@GetMapping`。觀念一對一。
  */
 
 import { Controller, Get, HttpCode, HttpStatus } from '@nestjs/common';
+
+import { Public } from '../../common/decorators/public.decorator.js';
 
 import { DatabaseService } from '../../database/database.service.js';
 import { RedisService } from '../../redis/redis.service.js';
@@ -87,6 +98,7 @@ export class HealthController {
    *
    * @returns 各相依的連線狀態
    */
+  @Public()
   @Get()
   @HttpCode(HttpStatus.OK)
   async check(): Promise<HealthResponse> {
