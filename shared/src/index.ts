@@ -4,7 +4,7 @@
  * 這個檔案是什麼：
  *   `@fintech/shared` 這個套件的公開介面。web 與 api 從這裡 import 東西：
  *
- *     import { APP_NAME } from '@fintech/shared';
+ *     import { APP_NAME, cents, calculateTradeCost } from '@fintech/shared';
  *
  * 為什麼存在：
  *   本專案最重要的架構訊號是「前後端契約只有一份」（見 docs/adr/0002）。
@@ -15,13 +15,25 @@
  *   最底層。shared 不依賴任何其他 workspace，反過來 web / api / market-feed
  *   都依賴它。因此 shared 裡面絕對不能出現瀏覽器 API 或 NestJS 的東西。
  *
- * 目前內容（單元 0.2a）：
- *   只有一個常數，作用是驗證 workspace 的連接有沒有真的通。
- *   後續單元會陸續加入：
- *     - money.ts    金額運算（單元 0.2b）
- *     - schemas/    zod 契約（單元 0.4 起）
- *     - errors.ts   錯誤碼列舉（單元 4.1）
+ * ── 這個檔案的角色是「barrel（桶檔）」───────────────────────────────
+ *
+ *   它自己幾乎不寫邏輯，只負責把各個模組的公開 API 收攏成一個入口。
+ *   好處是使用端不用記得「金額在 money、費用在 market-rules」，
+ *   一律 `from '@fintech/shared'` 就好。
+ *
+ *   需要細分時仍可走子路徑（見 shared/package.json 的 exports）：
+ *     import { cents } from '@fintech/shared/money';
+ *
+ * 目前內容：
+ *   ✅ money.ts         金額型別與運算（單元 0.2b）
+ *   ✅ market-rules.ts  台股規則：跳動單位、手續費、漲跌停（單元 0.2b）
+ *   ⬜ schemas/         zod 契約（單元 0.4 起）
+ *   ⬜ errors.ts        錯誤碼列舉（單元 4.1）
  */
+
+// ============================================================================
+// 應用層級常數
+// ============================================================================
 
 /** 應用程式名稱。品牌名稱確定後會換掉這個值。 */
 export const APP_NAME = 'FinTech';
@@ -29,10 +41,13 @@ export const APP_NAME = 'FinTech';
 /** 幣別代碼。本專案只處理新台幣。 */
 export const CURRENCY = 'TWD' as const;
 
-/**
- * 一元等於幾分。
- *
- * 本專案所有金額一律以「分」為最小單位的整數儲存，絕不使用浮點數
- * （見 docs/adr/0005）。這個常數是元與分之間換算的唯一依據。
- */
-export const CENTS_PER_UNIT = 100;
+// ============================================================================
+// 子模組再匯出
+//
+// `export *` 會把該模組所有具名匯出（含型別）都轉出來。
+// 順序有意義：market-rules 依賴 money，所以 money 放前面比較好讀，
+// 但實際上 ESM 會自行處理相依順序，不會因為寫反而壞掉。
+// ============================================================================
+
+export * from './money.js';
+export * from './market-rules.js';
