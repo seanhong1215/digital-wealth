@@ -4,7 +4,6 @@
   "private": true,
   "description": "前後端共用的契約層 — zod schema、金額運算、錯誤碼",
   "type": "module",
-
   "//": [
     "exports 直接指向 TypeScript 原始碼（./src/index.ts），而不是編譯後的 dist。",
     "這樣改了 shared 的程式碼，web 與 api 立刻就會看到，不需要先 build 一次。",
@@ -14,11 +13,15 @@
   "exports": {
     ".": "./src/index.ts",
     "./money": "./src/money.ts",
-    "./market-rules": "./src/market-rules.ts"
+    "./market-rules": "./src/market-rules.ts",
+    "./errors": "./src/errors.ts",
+    "./schemas": "./src/schemas/index.ts"
   },
   "types": "./src/index.ts",
-
   "scripts": {
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^3.25.76"
   }
 }

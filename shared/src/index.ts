@@ -27,8 +27,8 @@
  * 目前內容：
  *   ✅ money.ts         金額型別與運算（單元 0.2b）
  *   ✅ market-rules.ts  台股規則：跳動單位、手續費、漲跌停（單元 0.2b）
- *   ⬜ schemas/         zod 契約（單元 0.4 起）
- *   ⬜ errors.ts        錯誤碼列舉（單元 4.1）
+ *   ✅ schemas/         zod 契約：認證、投組、明細（單元 1.1）
+ *   ✅ errors.ts        錯誤碼列舉（單元 1.1，Phase 4 會補齊下單相關的碼）
  */
 
 // ============================================================================
@@ -51,3 +51,5 @@ export const CURRENCY = 'TWD' as const;
 
 export * from './money.js';
 export * from './market-rules.js';
+export * from './errors.js';
+export * from './schemas/index.js';
