@@ -4,7 +4,6 @@
   "private": true,
   "description": "NestJS 後端 — 帳務與交易核心",
   "type": "module",
-
   "//執行方式": [
     "本專案不做 nest build。理由：",
     "  1. shared 直接匯出未編譯的 .ts（見 shared/package.json 的說明），",
@@ -18,14 +17,12 @@
     "  用 tsx 跑 NestJS 會在啟動時噴 Nest can't resolve dependencies。",
     "  SWC 有支援，設定在 .swcrc 的 decoratorMetadata。"
   ],
-
   "//環境變數": [
     "--env-file-if-exists 是 Node 20.6+ 內建的 .env 載入功能，",
     "所以本專案不需要 dotenv 套件。用 if-exists 版本是因為在 Docker 容器內",
     "沒有 .env 檔（變數由 docker-compose 的 environment 直接注入），",
     "用 --env-file 會因為找不到檔案而啟動失敗。"
   ],
-
   "scripts": {
     "start:dev": "node --env-file-if-exists=../.env --import @swc-node/register/esm-register --watch src/main.ts",
     "start": "node --env-file-if-exists=../.env --import @swc-node/register/esm-register src/main.ts",
@@ -33,21 +30,24 @@
     "seed": "node --env-file-if-exists=../.env --import @swc-node/register/esm-register src/database/seeds/seed.ts",
     "typecheck": "tsc --noEmit"
   },
-
   "dependencies": {
     "@fintech/shared": "*",
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
+    "@nestjs/jwt": "^11.0.2",
     "@nestjs/platform-express": "^11.0.0",
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
     "pg": "^8.13.0",
     "redis": "^4.7.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.0"
   },
-
   "devDependencies": {
     "@swc-node/register": "^1.10.0",
     "@swc/core": "^1.10.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cookie-parser": "^1.4.10",
     "@types/pg": "^8.11.0"
   }
 }
