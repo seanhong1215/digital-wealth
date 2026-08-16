@@ -251,7 +251,14 @@ const cents = toCents(amount);
 type Cents = number & { readonly __brand: 'Cents' };
 ```
 
-4. **資料庫欄位型別**：金額用 `BIGINT`（分）；零股數量用 `NUMERIC(18,4)`（有小數但需精確）
+4. **資料庫欄位型別**：金額用 `BIGINT`（分）；**股數也用 `BIGINT`**
+
+   > **修正（2026-08-15，單元 0.3）**：本項原寫「零股數量用 `NUMERIC(18,4)`」，
+   > 已被 [`adr/0005`](adr/0005-money-as-bigint-cents.md) 與
+   > [`02-backend.md`](02-backend.md) 的 `positions` 表推翻。
+   > 理由：**台股零股交易的最小單位是 1 股（整數），不存在 0.5 股。**
+   > 需要 `NUMERIC` 的是美股碎股（可買 0.137 股），本專案不做。
+   > 實作以 ADR 為準。
 5. **顯示層才轉為字串**，由前端 `MoneyText` 元件負責
 
 ---
