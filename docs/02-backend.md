@@ -543,7 +543,9 @@ makeSnapshots(seed: number, scenario: AccountScenario): SnapshotSeed[]
 
 ## WebSocket 協定
 
-**端點**：`ws://localhost:3000/ws/quotes`
+**端點**：`ws://localhost:3000/api/ws/quotes`
+
+> **路徑修正（實作時發現）**：原訂 `/ws/quotes`，但存放 JWT 的 cookie 設了 `path=/api`（刻意收斂，見認證設計）。cookie 的 path 限制由**瀏覽器**執行 —— WebSocket 不在 `/api` 底下的話，握手請求完全不帶 cookie，後端只會看到匿名連線。放寬 cookie path 是退步，所以改為把 WS 端點移進 `/api`。
 **認證**：連線時帶上 cookie（與 REST 相同），Gateway 在 `handleConnection` 驗證
 
 ### 訊息格式

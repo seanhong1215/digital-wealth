@@ -26,7 +26,10 @@ import 'reflect-metadata';
 
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { WsAdapter } from '@nestjs/platform-ws';
 import cookieParser from 'cookie-parser';
+
+import { QUOTES_WS_PATH } from '@fintech/shared';
 
 import { AppModule } from './app.module.js';
 import { env } from './config/env.js';
@@ -113,10 +116,35 @@ async function bootstrap(): Promise<void> {
    */
   app.enableShutdownHooks();
 
+  /**
+   * WebSocket 轉接層。
+   *
+   * ── 為什麼是 WsAdapter 而不是預設的 socket.io ★ ──────────────────
+   *
+   *   NestJS 的 @WebSocketGateway 預設跑在 socket.io 上。socket.io 好用，
+   *   但它**不是標準 WebSocket** —— 它有自己的握手流程與封包格式，
+   *   所以瀏覽器原生的 `new WebSocket(url)` 連不上，前端必須裝
+   *   socket.io-client 才能溝通。
+   *
+   *   本專案選原生 `ws`：
+   *     · 前端零相依 —— `new WebSocket()` 是瀏覽器內建的
+   *     · 協定是自己定義的純 JSON（見 shared/schemas/quote.ts），
+   *       用 wscat 或瀏覽器 console 就能手動測試
+   *     · socket.io 的賣點（自動重連、房間、退回輪詢）本專案要嘛
+   *       用不到，要嘛自己實作了 —— 重連退避的 jitter 是刻意要展示的東西，
+   *       交給函式庫就沒得講了
+   *
+   *   ⚠️ 這一行必須在 `app.listen()` **之前**。之後才設定的話，
+   *      Gateway 仍會用預設的 socket.io 轉接層，前端會連不上，
+   *      而且錯誤訊息只會說「連線失敗」，看不出是轉接層不對。
+   */
+  app.useWebSocketAdapter(new WsAdapter(app));
+
   await app.listen(env.port, '0.0.0.0');
 
   logger.log(`API 已啟動：http://localhost:${env.port}/api/v1`);
   logger.log(`健康檢查：http://localhost:${env.port}/api/v1/health`);
+  logger.log(`即時報價：ws://localhost:${env.port}${QUOTES_WS_PATH}`);
 }
 
 /**

@@ -25,6 +25,7 @@ import { HealthModule } from './modules/health/health.module.js';
 import { InstrumentsModule } from './modules/instruments/instruments.module.js';
 import { OrdersModule } from './modules/orders/orders.module.js';
 import { PortfolioModule } from './modules/portfolio/portfolio.module.js';
+import { QuotesModule } from './modules/quotes/quotes.module.js';
 import { TransactionsModule } from './modules/transactions/transactions.module.js';
 import { RedisModule } from './redis/redis.module.js';
 
@@ -42,9 +43,9 @@ import { RedisModule } from './redis/redis.module.js';
     PortfolioModule, //    GET  /portfolio/summary｜/portfolio/snapshots｜/positions
     TransactionsModule, // GET  /transactions
     OrdersModule, //       POST /orders｜/orders/preview｜GET /orders/:id
+    QuotesModule, //       WS   /ws/quotes（即時報價）
 
     // 【後續單元回來加】目錄已建好，等對應單元實作：
-    //   QuotesModule  → 單元 2.3（WebSocket Gateway、Redis 訂閱）
     //   DemoModule    → 單元 4.3（故障注入，動態模組）
   ],
 

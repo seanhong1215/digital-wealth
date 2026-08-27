@@ -36,18 +36,22 @@
     "@nestjs/core": "^11.0.0",
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/platform-express": "^11.0.0",
+    "@nestjs/platform-ws": "^11.2.3",
+    "@nestjs/websockets": "^11.2.3",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.7",
     "pg": "^8.13.0",
     "redis": "^4.7.0",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.0"
+    "rxjs": "^7.8.0",
+    "ws": "^8.21.3"
   },
   "devDependencies": {
     "@swc-node/register": "^1.10.0",
     "@swc/core": "^1.10.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/cookie-parser": "^1.4.10",
-    "@types/pg": "^8.11.0"
+    "@types/pg": "^8.11.0",
+    "@types/ws": "^8.18.1"
   }
 }
