@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <!--
+      viewport-fit=cover 讓內容延伸到 iPhone 的瀏海與底部 Home Indicator 區域，
+      配合 CSS 的 env(safe-area-inset-*) 就能避開它們。本專案是 mobile-first，
+      這一行不是選配。
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="數位財富管理示範系統 — 虛構品牌，與任何真實金融機構無關" />
+    <title>FinTech 數位財富管理</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

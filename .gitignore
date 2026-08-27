@@ -46,6 +46,9 @@ api/dist/
 coverage/
 .nyc_output/
 playwright-report/
+
+# Playwright MCP 的暫存快照與截圖（開發時驗證畫面用，不是專案產物）
+.playwright-mcp/
 test-results/
 
 # ------------------------------------------------------------------------------

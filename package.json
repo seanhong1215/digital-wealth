@@ -8,12 +8,12 @@
     "workspaces 只列出「已經有 package.json」的子專案。",
     "npm 找不到對應的 package.json 會直接報錯，所以不能先寫好佔位。",
     "後續單元建立子專案時，記得回來把名字加進下面這個陣列：",
-    "  web         → 單元 1.2（前端接上 API）",
     "  market-feed → 單元 2.1（報價產生器）"
   ],
   "workspaces": [
     "shared",
-    "api"
+    "api",
+    "web"
   ],
   "engines": {
     "node": ">=20"
@@ -24,6 +24,7 @@
     "typecheck": "tsc --build --force && npm run typecheck -w @fintech/api",
 
     "dev:api": "npm run start:dev -w @fintech/api",
+    "dev:web": "npm run dev -w @fintech/web",
     "migrate": "npm run migrate -w @fintech/api",
     "seed": "npm run seed -w @fintech/api",
 
