@@ -23,6 +23,7 @@ import { AccountsModule } from './modules/accounts/accounts.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { InstrumentsModule } from './modules/instruments/instruments.module.js';
+import { OrdersModule } from './modules/orders/orders.module.js';
 import { PortfolioModule } from './modules/portfolio/portfolio.module.js';
 import { TransactionsModule } from './modules/transactions/transactions.module.js';
 import { RedisModule } from './redis/redis.module.js';
@@ -40,10 +41,10 @@ import { RedisModule } from './redis/redis.module.js';
     InstrumentsModule, //  GET  /instruments｜/instruments/:symbol
     PortfolioModule, //    GET  /portfolio/summary｜/portfolio/snapshots｜/positions
     TransactionsModule, // GET  /transactions
+    OrdersModule, //       POST /orders｜/orders/preview｜GET /orders/:id
 
     // 【後續單元回來加】目錄已建好，等對應單元實作：
     //   QuotesModule  → 單元 2.3（WebSocket Gateway、Redis 訂閱）
-    //   OrdersModule  → 單元 3.1（下單：transaction + 行鎖 + 冪等）
     //   DemoModule    → 單元 4.3（故障注入，動態模組）
   ],
 
