@@ -188,6 +188,19 @@ services:
 
       API_PORT: 3000
 
+      # ★ JWT 密鑰。**必須**從 .env 傳進來 —— 沒有預設值是刻意的
+      #   （見 api/src/config/env.ts：沒設定就啟動失敗，而不是
+      #   靜默地用一把大家都知道的密鑰在跑）。
+      #
+      #   ⚠️ 這一行漏掉過。api 容器一直沒被真正啟動過，所以直到
+      #      把整套 compose 跑起來的那一刻才發現：容器裡沒有 .env
+      #      （`--env-file-if-exists` 會安靜地略過），環境變數又沒傳，
+      #      於是 migration 一啟動就因為缺 JWT_SECRET 而失敗。
+      #
+      #      教訓是「設定檔寫好」不等於「設定正確」—— 唯一能證明的
+      #      方式是真的跑一次。
+      JWT_SECRET: ${JWT_SECRET:?請在 .env 設定 JWT_SECRET（產生方式：openssl rand -base64 32）}
+
     ports:
       # 容器內固定 3000，主機端可由 .env 的 API_PORT 調整
       # （3000 被其他程式佔用時很有用）。
@@ -226,6 +239,102 @@ services:
       # migration 與 seed 要跑一段時間（heavy-history 情境有 8000 筆），
       # 給足緩衝期，否則容器會在還在寫資料時就被判定不健康。
       start_period: 60s
+
+  # ============================================================================
+  # market-feed — 報價產生器
+  #
+  # 它只做一件事：每 800ms 產生一批 tick，publish 到 Redis。
+  # 不對外開 port，也沒有任何人會連它。
+  #
+  # ★ 這個服務可以被單獨關掉，用來演示降級：
+  #
+  #     docker compose stop market-feed
+  #
+  #   五秒內前端會顯示「報價來源目前沒有更新」，價格停在最後收到的值，
+  #   而持倉、明細、下單通通照常。這是 README 的 P2 完成判準。
+  # ============================================================================
+  market-feed:
+    build:
+      context: .
+      dockerfile: market-feed/Dockerfile
+
+    container_name: fintech-market-feed
+    restart: unless-stopped
+
+    environment:
+      NODE_ENV: development
+      TZ: Asia/Taipei
+
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+      # 調快可以讓 demo 影片更有戲，調慢比較接近真實個股的成交頻率。
+      FEED_TICK_INTERVAL_MS: ${FEED_TICK_INTERVAL_MS:-800}
+      FEED_SYMBOLS_PER_TICK: ${FEED_SYMBOLS_PER_TICK:-12}
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      # ★ 要等 api 健康才啟動 —— 不是因為它需要 api，
+      #   而是因為 api 的 entrypoint 會跑 migration 與 seed。
+      #   market-feed 開機時要讀 instruments 表，資料還沒寫進去就會
+      #   讀到空的然後直接結束（「資料庫裡沒有任何可交易標的」）。
+      api:
+        condition: service_healthy
+
+  # ============================================================================
+  # web — 前端（nginx 提供靜態檔 ＋ 代理 API）
+  #
+  # 這是使用者實際打開的位址。它同時扮演兩個角色：
+  #   1. 提供 Vite build 出來的靜態檔
+  #   2. 把 /api 轉給 api 容器（含 WebSocket 升級）
+  #
+  # 為什麼要代理而不讓瀏覽器直接打 api：見 web/nginx.conf 的說明 ——
+  # 一句話是「同源」，這樣 httpOnly cookie 與相對路徑才會正常運作。
+  # ============================================================================
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+
+    container_name: fintech-web
+    restart: unless-stopped
+
+    ports:
+      # 主機端預設 8090。不用 80 是因為它通常需要 root 權限；
+      # 不用 8080 是因為那是最容易撞到的 port（Tomcat、Spring Boot⋯）。
+      - "${WEB_PORT:-8090}:80"
+
+    depends_on:
+      api:
+        condition: service_healthy
+
+    healthcheck:
+      # ★ 一定要寫 127.0.0.1，不能寫 localhost。
+      #
+      #   容器的 /etc/hosts 裡 localhost 同時對應 127.0.0.1 與 ::1，
+      #   而解析時 **IPv6 優先**。nginx 的 `listen 80` 預設只綁 IPv4，
+      #   所以 wget 連 ::1 會得到 connection refused。
+      #
+      #   症狀非常誤導：從主機 curl 網站回 200 一切正常，
+      #   但容器被標成 unhealthy —— 看起來像健康檢查壞掉，
+      #   其實是「檢查的位址跟服務監聽的位址不同」。
+      #
+      #   另一種解法是讓 nginx 也 `listen [::]:80`，但那是為了
+      #   健康檢查去改服務的監聽行為，本末倒置。
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
 
 # ==============================================================================
 # Volumes（具名資料卷）
