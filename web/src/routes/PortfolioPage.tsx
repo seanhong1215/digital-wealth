@@ -21,8 +21,9 @@
  *   如果讓後端算，每次報價跳動都要重打一次 API 才能更新損益 ——
  *   那等於把即時串流退化成輪詢。
  *
- *   目前 WebSocket 尚未實作（單元 2.3），所以暫時用昨收價當現價，
- *   並在畫面上明講「以昨收價計算」。誠實的簡化勝過假裝有即時報價。
+ *   所以這一頁的市值與未實現損益，是用 WebSocket 推來的即時價格
+ *   在前端算出來的。報價中斷時自動退回昨收價，並在畫面上標示 ——
+ *   降級不是把數字藏起來，是把數字的來源說清楚。
  */
 
 import { useMemo } from 'react';
@@ -45,6 +46,16 @@ import {
   usePositions,
 } from '../features/portfolio/api/queries';
 import {
+  useFeedStatus,
+  useLiveMarketValue,
+  useLivePrice,
+  useQuoteSubscription,
+} from '../features/quotes/api/use-quotes';
+import {
+  FreshnessTag,
+  QuoteFeedBanner,
+} from '../features/quotes/components/QuoteStatus';
+import {
   formatMoney,
   formatPrice,
   formatQuantity,
@@ -66,9 +77,21 @@ export function PortfolioPage() {
   const snapshots = usePortfolioSnapshots(30);
   const positions = usePositions();
 
+  // ★ 只訂閱畫面上真的看得到的標的 —— 也就是這個帳戶的持倉。
+  //
+  // useMemo 是必要的：symbols 陣列如果每次 render 都是新物件，
+  // 訂閱的 effect 會不斷退訂再訂閱（理由見 useQuoteSubscription 的說明）。
+  const symbols = useMemo(
+    () => (positions.data ?? []).map((p) => p.instrument.symbol),
+    [positions.data],
+  );
+  useQuoteSubscription(symbols);
+
   return (
     <div className="flex flex-col gap-4">
       <h1 className="sr-only">投資總覽</h1>
+
+      <QuoteFeedBanner />
 
       <OverviewCard
         data={summary.data}
@@ -112,9 +135,16 @@ function OverviewCard({
   onRetry: () => void;
   positions: Position[] | undefined;
 }) {
-  // 未實現損益 = 市值 − 成本基礎。兩個值都來自後端，相減在前端做。
-  const unrealizedPnl =
-    data && positions ? data.marketValueCents - data.totalCostBasisCents : null;
+  // ★ 市值用**即時報價**重算，不用後端回傳的 marketValueCents。
+  //
+  // 後端那個值是用昨收價算的（它沒有即時報價）。這裡拿 WebSocket
+  // 推來的價格 × 股數重算，數字才會跟著市場跳動。
+  // 報價還沒到的標的自動退回昨收價，hasFallback 會標記出來。
+  const live = useLiveMarketValue(positions ?? []);
+  const feed = useFeedStatus();
+
+  // 未實現損益 = 即時市值 − 成本基礎。成本基礎是後端的權威值。
+  const unrealizedPnl = data && positions ? live.marketValueCents - data.totalCostBasisCents : null;
 
   // 報酬率的分母是成本。成本為 0 時（例如全部部位都是股票股利取得）
   // 相除會得到 Infinity —— formatPercent 會把它顯示成 `—` 而不是 "Infinity%"。
@@ -122,6 +152,9 @@ function OverviewCard({
     data && data.totalCostBasisCents > 0 && unrealizedPnl !== null
       ? unrealizedPnl / data.totalCostBasisCents
       : null;
+
+  // 總資產也要跟著即時市值走。後端的 totalValueCents 同樣是昨收價版本。
+  const totalValue = data ? data.cashCents + live.marketValueCents : null;
 
   if (error) return <Card><ErrorState error={error} onRetry={onRetry} /></Card>;
 
@@ -142,7 +175,7 @@ function OverviewCard({
       {/* 36px、bold —— 這是整個 App 字級最大的數字，因為它是使用者
           打開 App 唯一真正想看的東西。 */}
       <p className="mt-1">
-        <MoneyText value={data.totalValueCents} size="4xl" />
+        <MoneyText value={totalValue} size="4xl" />
       </p>
 
       <div className="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1">
@@ -154,8 +187,16 @@ function OverviewCard({
         <Stat label="現金" value={<MoneyText value={data.cashCents} size="lg" />} />
         <Stat
           label="持股市值"
-          value={<MoneyText value={data.marketValueCents} size="lg" />}
-          hint="以昨收價計算"
+          value={<MoneyText value={live.marketValueCents} size="lg" />}
+          // 數字的來源必須誠實標示 —— 報價停了卻還寫「即時報價」，
+          // 比不標示更糟。三種情況三種說法。
+          hint={
+            feed !== 'live'
+              ? '最後收到的報價'
+              : live.hasFallback
+                ? '部分標的以昨收價計算'
+                : '即時報價'
+          }
         />
         <Stat
           label="未實現損益"
@@ -346,8 +387,14 @@ function PositionsCard({
 function PositionRow({ position }: { position: Position }) {
   const { instrument, quantity, avgCostCents, costBasisCents } = position;
 
-  // 現價暫用昨收（WebSocket 尚未接上，見檔頭說明）。
-  const marketValue = instrument.prevCloseCents * quantity;
+  // ★ 每一列各自訂閱自己那一檔的報價。
+  //
+  // 這代表 2330 跳動時，**只有這一列**會 re-render ——
+  // 其他 10 檔完全不受影響。持倉列表捲動時不會因為報價而卡頓。
+  // 做法見 quote-store.ts 的 listeners Map 說明。
+  const { priceCents, freshness } = useLivePrice(instrument.symbol, instrument.prevCloseCents);
+
+  const marketValue = priceCents * quantity;
   const pnl = marketValue - costBasisCents;
   const ratio = costBasisCents > 0 ? pnl / costBasisCents : null;
   const direction = priceDirection(pnl);
@@ -373,6 +420,9 @@ function PositionRow({ position }: { position: Position }) {
             {formatQuantity(quantity, instrument.lotSize)}
             <span className="mx-1.5 text-text-placeholder">·</span>
             均價 {formatPrice(avgCostCents)}
+            <span className="mx-1.5 text-text-placeholder">·</span>
+            現價 {formatPrice(priceCents)}
+            <FreshnessTag freshness={freshness} />
           </p>
         </div>
 

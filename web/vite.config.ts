@@ -34,7 +34,25 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:3000',
         changeOrigin: true,
+
+        /**
+         * 這一行讓同一條規則同時處理 WebSocket ★
+         *
+         * 報價的端點是 /api/ws/quotes —— 它在 /api 底下，
+         * 所以走的是這條規則（原因見 shared/schemas/quote.ts：
+         * cookie 的 path 限制在 /api，WS 不在底下就收不到身分）。
+         *
+         * 但**代理 HTTP 和代理 WebSocket 是兩件事**。WebSocket 的建立
+         * 靠一個帶著 `Upgrade: websocket` 標頭的 HTTP 請求，
+         * 代理要認得它並把底層 TCP 連線接過去，而不是讀完 body 就回應。
+         *
+         * 少了 `ws: true`，Vite 會把它當一般路由處理 → 前端收到 404
+         * → WebSocket 建立失敗 → 重連 → 再失敗……
+         * 而瀏覽器只會說「連線失敗」，看不出是代理設定的問題。
+         */
+        ws: true,
       },
+
     },
   },
 });

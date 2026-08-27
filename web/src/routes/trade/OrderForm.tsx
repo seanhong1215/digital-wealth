@@ -16,7 +16,7 @@
  *   不是「TypeScript 比較潮」，而是**業務規則可以只寫一次**。
  */
 
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import {
@@ -30,8 +30,12 @@ import {
   type OrderSideValue,
 } from '@fintech/shared';
 
-import { useAccount } from '../../features/portfolio/api/queries';
-import { usePositions } from '../../features/portfolio/api/queries';
+import { useAccount, usePositions } from '../../features/portfolio/api/queries';
+import { useLivePrice, useQuoteSubscription } from '../../features/quotes/api/use-quotes';
+import {
+  FreshnessTag,
+  QuoteFeedBanner,
+} from '../../features/quotes/components/QuoteStatus';
 import { useInstrument } from '../../features/trading/api/queries';
 import { formatMoney, formatPrice, formatQuantity } from '../../shared/lib/format';
 import { Button, Card, ErrorState, Field, SectionTitle, Skeleton } from '../../shared/ui';
@@ -46,17 +50,32 @@ export function OrderForm() {
   const accountQuery = useAccount();
   const positionsQuery = usePositions();
 
+  // 只訂閱當前這一檔。useMemo 讓陣列參考穩定，避免反覆退訂／訂閱。
+  const watched = useMemo(() => (symbol ? [symbol] : []), [symbol]);
+  useQuoteSubscription(watched);
+
   const [side, setSide] = useState<OrderSideValue>('BUY');
   const [quantityInput, setQuantityInput] = useState('1000');
   const [priceInput, setPriceInput] = useState('');
 
   const instrument = instrumentQuery.data;
+  const live = useLivePrice(symbol ?? '', instrument?.prevCloseCents ?? 0);
 
-  // 價格預設帶昨收價。使用者九成的情況只想微調，不想從空白開始打。
-  // 用「表單尚未被碰過」判斷，而不是 useEffect 塞值 —— 後者會在
-  // 使用者清空欄位時又把預設值塞回去，非常惱人。
+  // ── 價格預設帶「現價」，不是昨收價 ★ ──────────────────────────
+  //
+  //   使用者要下的是現在這個價格附近的單，預設帶昨收會讓他每次
+  //   都得先改一次。帶現價則多數情況直接按下一步就好。
+  //
+  //   ⚠️ 但這裡有個陷阱：現價每 800ms 就變一次。如果無條件跟著跳，
+  //      使用者打到一半的數字會被蓋掉 —— 那是會讓人想砸鍵盤的 bug。
+  //
+  //   所以只在「使用者還沒碰過這個欄位」（priceInput === ''）時
+  //   才顯示現價。一旦他輸入任何東西，欄位就完全歸他控制。
+  //
+  //   用衍生值而不是 useEffect + setState 也是同一個理由：
+  //   effect 會在報價變動時把值塞回欄位，正是我們要避免的行為。
   const priceValue =
-    priceInput !== '' ? priceInput : instrument ? (instrument.prevCloseCents / 100).toFixed(2) : '';
+    priceInput !== '' ? priceInput : live.priceCents > 0 ? (live.priceCents / 100).toFixed(2) : '';
 
   if (instrumentQuery.error) {
     return (
@@ -139,7 +158,9 @@ export function OrderForm() {
   };
 
   return (
-    <Card>
+    <>
+      <QuoteFeedBanner />
+      <Card>
       <SectionTitle
         action={
           <Link to="/trade" className="px-2 py-1 text-base text-text-secondary hover:underline">
@@ -150,11 +171,28 @@ export function OrderForm() {
         {instrument.symbol} {instrument.name}
       </SectionTitle>
 
-      <p className="tnum -mt-2 mb-4 text-base text-text-secondary">
-        昨收 {formatPrice(instrument.prevCloseCents)}
-        <span className="mx-1.5 text-text-placeholder">·</span>
-        漲跌停 {formatPrice(limits.lower)} – {formatPrice(limits.upper)}
-      </p>
+      <div className="-mt-2 mb-4">
+        <p className="tnum flex flex-wrap items-baseline gap-x-2 text-base">
+          <span className="text-text-secondary">現價</span>
+          <span
+            className={`text-xl font-semibold ${
+              live.priceCents > instrument.prevCloseCents
+                ? 'text-price-up'
+                : live.priceCents < instrument.prevCloseCents
+                  ? 'text-price-down'
+                  : 'text-price-flat'
+            }`}
+          >
+            {formatPrice(live.priceCents)}
+          </span>
+          <FreshnessTag freshness={live.freshness} />
+        </p>
+        <p className="tnum mt-1 text-sm text-text-secondary">
+          昨收 {formatPrice(instrument.prevCloseCents)}
+          <span className="mx-1.5 text-text-placeholder">·</span>
+          漲跌停 {formatPrice(limits.lower)} – {formatPrice(limits.upper)}
+        </p>
+      </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         {/* ── 買賣切換 ────────────────────────────────────────────
@@ -239,7 +277,8 @@ export function OrderForm() {
           下一步 · 確認委託
         </Button>
       </form>
-    </Card>
+      </Card>
+    </>
   );
 }
 
