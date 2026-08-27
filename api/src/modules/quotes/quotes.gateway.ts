@@ -56,6 +56,7 @@ import {
   type ServerMessage,
 } from '@digital-wealth/shared';
 
+import { DemoStateService } from '../demo/demo-state.service.js';
 import { RedisService } from '../../redis/redis.service.js';
 
 /** 每個連線最多能訂閱的標的數。防止有人送一萬檔把記憶體吃光。 */
@@ -86,6 +87,9 @@ export class QuotesGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private readonly redis: RedisService,
     private readonly jwtService: JwtService,
+    // Demo 控制台的 quote-disconnect 故障。DemoStateService 是全域註冊的，
+    // 控制台關閉時它永遠回報「沒有故障」—— 所以這裡不需要任何條件判斷。
+    private readonly demoState: DemoStateService,
   ) {}
 
   /**
@@ -155,6 +159,20 @@ export class QuotesGateway implements OnGatewayConnection, OnGatewayDisconnect {
       this.logger.debug(`連線建立：帳戶 ${payload.accountId}`);
     } catch {
       this.reject(client, 'AUTH_REQUIRED', '登入已過期');
+      return;
+    }
+
+    // ── quote-disconnect 故障：直接拒絕連線 ★ ─────────────────
+    //
+    //   為什麼故障注入 middleware 處理不到這裡：middleware 是
+    //   Express 的機制，只作用在 HTTP 路由上。WebSocket 握手雖然
+    //   是一個 HTTP 請求，但升級之後就離開 Express 的管線了 ——
+    //   之後的每一筆訊息都不會再經過任何 middleware。
+    //
+    //   所以 WS 的故障必須由 Gateway 自己處理。這也是為什麼
+    //   DemoStateService 要設成全域可注入。
+    if (this.demoState.hasFault('quote-disconnect')) {
+      this.reject(client, 'SERVICE_UNAVAILABLE', '報價服務暫時無法使用');
       return;
     }
 
@@ -281,6 +299,11 @@ export class QuotesGateway implements OnGatewayConnection, OnGatewayDisconnect {
    *   · payload 只序列化一次，重複用於所有訂閱者
    */
   private onQuote(raw: string): void {
+    // 故障可能是在連線**建立之後**才被打開的。這時既有的連線還活著，
+    // 所以除了拒絕新連線，也要停止推送 —— 否則面試官打開故障之後
+    // 數字照跳，什麼都沒發生。
+    if (this.demoState.hasFault('quote-disconnect')) return;
+
     let quote;
     try {
       quote = quoteSchema.parse(JSON.parse(raw));

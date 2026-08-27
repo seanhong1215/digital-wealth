@@ -141,3 +141,22 @@ export const env = {
 
 /** 是否為正式環境。用在錯誤回應要不要帶 stack trace 之類的判斷。 */
 export const isProduction = env.nodeEnv === 'production';
+
+/**
+ * 是否啟用 Demo 控制台（情境切換與故障注入）。
+ *
+ * ── 判斷式為什麼是這個形狀 ★ ────────────────────────────────────
+ *
+ *     非正式環境           → 開（開發與 demo 都要用）
+ *     正式環境 + ENABLE_DEMO=1 → 開（**刻意**要展示時的逃生門）
+ *     正式環境（預設）      → 關
+ *
+ *   第二條看起來像在開後門，但它是必要的：本專案的「正式環境」
+ *   就是面試官本機跑的那份 Docker Compose，而控制台正是要給他用的。
+ *   沒有這個開關，一旦有人把 NODE_ENV 設成 production，
+ *   整個 demo 的價值就消失了。
+ *
+ *   關鍵在於它是 **opt-in**：預設關閉，要開必須明確設定環境變數。
+ *   真正上線的系統不會有人手滑設這個變數，而設了的人知道自己在做什麼。
+ */
+export const isDemoEnabled = !isProduction || process.env.ENABLE_DEMO === '1';

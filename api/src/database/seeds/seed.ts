@@ -35,6 +35,33 @@ const { Client } = pg;
 const DEMO_EMAIL = 'demo@digital-wealth.local';
 
 /**
+ * demo 使用者與帳戶的 **固定 UUID** ★
+ *
+ * ── 為什麼不讓資料庫用 gen_random_uuid() 產生 ────────────────────
+ *
+ *   因為 Demo 控制台會在服務執行中重建資料庫。而使用者的身分
+ *   （JWT）裡存的正是 user id 與 account id ——
+ *
+ *     重建 → 新的 UUID → 舊的 JWT 指向一個不存在的使用者
+ *          → 下一個請求 401 → 使用者被踢回登入頁
+ *
+ *   面試官切一次情境就被登出，還得重新登入才能看結果，
+ *   那個「一鍵切換」的價值就沒了。（這是實測踩到的：
+ *   切換情境後所有 API 立刻回 401。）
+ *
+ *   固定 id 之後，重建前後的身分是同一個，cookie 仍然有效。
+ *
+ *   這也更符合本專案的原則：**同一組（情境、種子）永遠產生
+ *   一模一樣的資料**。id 是資料的一部分，隨機的 id 讓
+ *   「一模一樣」變成只是「數字一樣」。
+ *
+ *   格式是合法的 v4 UUID（第 13 位是 4、變體位是 8），
+ *   用全 0 開頭讓它一眼看得出是固定值而不是隨機產生的。
+ */
+const DEMO_USER_ID = '00000000-0000-4000-8000-000000000001';
+const DEMO_ACCOUNT_ID = '00000000-0000-4000-8000-000000000002';
+
+/**
  * demo 帳號的密碼（明文）。
  *
  * ⚠️ **明文密碼寫在原始碼裡，一般情況下是嚴重的安全問題。**
@@ -143,7 +170,7 @@ async function hasExistingData(client: pg.Client): Promise<boolean> {
  *
  * 保留 `schema_migrations` 不清 —— 那是結構版本記錄，不是業務資料。
  */
-async function truncateAll(client: pg.Client): Promise<void> {
+async function truncateAll(client: Queryable): Promise<void> {
   await client.query('TRUNCATE users, instruments RESTART IDENTITY CASCADE');
 }
 
@@ -156,7 +183,7 @@ async function truncateAll(client: pg.Client): Promise<void> {
  * @returns symbol 對應到資料庫產生的 UUID
  */
 async function insertInstruments(
-  client: pg.Client,
+  client: Queryable,
   data: SeedData,
 ): Promise<Map<string, string>> {
   const idBySymbol = new Map<string, string>();
@@ -202,7 +229,7 @@ async function insertInstruments(
  * @param rows 資料列，每列是與 columns 對應的值陣列
  */
 async function insertBatch(
-  client: pg.Client,
+  client: Queryable,
   table: string,
   columns: readonly string[],
   rows: readonly (readonly unknown[])[],
@@ -235,60 +262,83 @@ async function insertBatch(
 /**
  * 主流程。
  */
-async function main(): Promise<void> {
-  const options = parseArgs(process.argv.slice(2));
+/** `applySeed()` 寫完之後回報的摘要。Demo 控制台會把它顯示在畫面上。 */
+export interface SeedSummary {
+  readonly scenario: AccountScenario;
+  readonly seed: number;
+  readonly transactionCount: number;
+  readonly positionCount: number;
+  readonly snapshotCount: number;
+  readonly cashBalanceCents: number;
+}
 
-  const client = new Client({
-    host: env.postgres.host,
-    port: env.postgres.port,
-    user: env.postgres.user,
-    password: env.postgres.password,
-    database: env.postgres.database,
-  });
+/**
+ * 能下查詢的東西。pg.Client、pg.PoolClient、以及 DatabaseService 的
+ * TransactionClient 都符合這個形狀。
+ *
+ * 用結構型別而不是直接寫 `pg.Client`，是為了讓這個函式同時服務
+ * CLI（自己開一條 Client）與 NestJS（連線池的交易）。
+ */
+interface Queryable {
+  query<Row extends pg.QueryResultRow = pg.QueryResultRow>(
+    sql: string,
+    params?: readonly unknown[],
+  ): Promise<pg.QueryResult<Row>>;
+}
 
-  await client.connect();
+/**
+ * 把指定情境的資料寫進資料庫（會先清空）。
+ *
+ * ── 為什麼要從 CLI 的 main() 裡抽出來 ★ ─────────────────────────
+ *
+ *   原本這段邏輯整個包在 `main()` 裡，只有指令列能用。但 Demo 控制台
+ *   要在**服務執行中**切換情境（`POST /demo/scenario`），需要呼叫
+ *   同一段邏輯。
+ *
+ *   複製一份到 demo 模組是最快的做法，也是最糟的 —— 兩份 seed 邏輯
+ *   遲早會分岔，然後「用 CLI 灌的資料」和「用控制台切的資料」
+ *   形狀不一樣，而這種 bug 只有在對照兩者時才會發現。
+ *
+ * ── ⚠️ 這個函式**不管理交易**，由呼叫端負責 ★ ────────────────────
+ *
+ *   跟 orders.repository.ts 同一個慣例：誰開交易誰負責傳連線進來。
+ *
+ *   原因是 NestJS 那一側會用 `db.transaction()` 包起來，那個方法
+ *   自己會下 BEGIN / COMMIT。如果這裡也下一次，就會變成巢狀交易 ——
+ *   PostgreSQL 不支援，內層的 COMMIT 會直接把外層一起提交掉，
+ *   之後外層若要回滾就回不了了。
+ *
+ *   代價是呼叫端不能忘記包交易。忘了的話每一句 INSERT 都會
+ *   autocommit，中途失敗就留下一半的資料 —— 而「一半的 seed 資料」
+ *   比「沒有資料」難查得多，因為畫面看起來是有東西的，只是數字對不上。
+ *
+ * @param client 已經在交易中的連線
+ */
+export async function applySeed(
+  client: Queryable,
+  options: { scenario: AccountScenario; seed: number },
+): Promise<SeedSummary> {
+  const data = buildSeedData(options.scenario, options.seed);
 
-  try {
-    if (options.ifEmpty && (await hasExistingData(client))) {
-      console.log('資料庫已有資料，略過 seed（要強制重建請拿掉 --if-empty）');
-      return;
-    }
-
-    console.log(`情境：${options.scenario}｜種子：${options.seed}`);
-    console.log('產生資料中…');
-
-    const data = buildSeedData(options.scenario, options.seed);
-
-    console.log(
-      `  明細 ${data.transactions.length} 筆｜` +
-        `持倉 ${data.positions.length} 檔｜` +
-        `快照 ${data.snapshots.length} 天`,
-    );
-
-    // ── 整個 seed 包在一個交易裡 ──────────────────────────────────
-    // 中途失敗時資料庫會回到原狀，而不是留下一半的資料。
-    // 「一半的 seed 資料」比「沒有資料」難查得多 —— 因為畫面看起來
-    // 是有東西的，只是數字對不上。
-    await client.query('BEGIN');
-
+  {
     await truncateAll(client);
 
     // 使用者與帳戶
-    const { rows: userRows } = await client.query<{ id: string }>(
-      `INSERT INTO users (email, password_hash, display_name)
-       VALUES ($1, $2, $3) RETURNING id`,
-      [DEMO_EMAIL, await AuthService.hashPassword(DEMO_PASSWORD), '示範帳戶'],
-    );
-    const userId = userRows[0]?.id;
-    if (userId === undefined) throw new Error('建立使用者後沒有拿到 id');
+    // id 明確給定（理由見 DEMO_USER_ID 的說明），不讓資料庫隨機產生。
+    const userId = DEMO_USER_ID;
+    const accountId = DEMO_ACCOUNT_ID;
 
-    const { rows: accountRows } = await client.query<{ id: string }>(
-      `INSERT INTO accounts (user_id, account_no, cash_balance_cents, currency)
-       VALUES ($1, $2, $3, $4) RETURNING id`,
-      [userId, '1234-5678', data.cashBalanceCents, 'TWD'],
+    await client.query(
+      `INSERT INTO users (id, email, password_hash, display_name)
+       VALUES ($1, $2, $3, $4)`,
+      [userId, DEMO_EMAIL, await AuthService.hashPassword(DEMO_PASSWORD), '示範帳戶'],
     );
-    const accountId = accountRows[0]?.id;
-    if (accountId === undefined) throw new Error('建立帳戶後沒有拿到 id');
+
+    await client.query(
+      `INSERT INTO accounts (id, user_id, account_no, cash_balance_cents, currency)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [accountId, userId, '1234-5678', data.cashBalanceCents, 'TWD'],
+    );
 
     // 標的
     const instrumentIds = await insertInstruments(client, data);
@@ -348,14 +398,59 @@ async function main(): Promise<void> {
       ]),
     );
 
-    await client.query('COMMIT');
+    return {
+      scenario: options.scenario,
+      seed: options.seed,
+      transactionCount: data.transactions.length,
+      positionCount: data.positions.length,
+      snapshotCount: data.snapshots.length,
+      cashBalanceCents: Number(data.cashBalanceCents),
+    };
+  }
+}
 
+/** 指令列進入點：解析參數 → 開連線 → 呼叫 applySeed → 印摘要。 */
+async function main(): Promise<void> {
+  const options = parseArgs(process.argv.slice(2));
+
+  const client = new Client({
+    host: env.postgres.host,
+    port: env.postgres.port,
+    user: env.postgres.user,
+    password: env.postgres.password,
+    database: env.postgres.database,
+  });
+
+  await client.connect();
+
+  try {
+    if (options.ifEmpty && (await hasExistingData(client))) {
+      console.log('資料庫已有資料，略過 seed（要強制重建請拿掉 --if-empty）');
+      return;
+    }
+
+    console.log(`情境：${options.scenario}｜種子：${options.seed}`);
+    console.log('產生資料中…');
+
+    // CLI 自己負責交易邊界（理由見 applySeed 的說明）。
+    await client.query('BEGIN');
+    let summary;
+    try {
+      summary = await applySeed(client, options);
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    }
+
+    console.log(
+      `  明細 ${summary.transactionCount} 筆｜` +
+        `持倉 ${summary.positionCount} 檔｜` +
+        `快照 ${summary.snapshotCount} 天`,
+    );
     console.log('\n寫入完成。');
-    console.log(`  帳戶餘額：NT$ ${(Number(data.cashBalanceCents) / 100).toLocaleString('en-US')}`);
+    console.log(`  帳戶餘額：NT$ ${(summary.cashBalanceCents / 100).toLocaleString('en-US')}`);
     console.log(`  demo 帳號：${DEMO_EMAIL} / ${DEMO_PASSWORD}`);
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
   } finally {
     await client.end();
   }

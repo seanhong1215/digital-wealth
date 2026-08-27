@@ -18,9 +18,11 @@ import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard.js';
+import { isDemoEnabled } from './config/env.js';
 import { DatabaseModule } from './database/database.module.js';
 import { AccountsModule } from './modules/accounts/accounts.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
+import { DemoModule } from './modules/demo/demo.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { InstrumentsModule } from './modules/instruments/instruments.module.js';
 import { OrdersModule } from './modules/orders/orders.module.js';
@@ -45,8 +47,12 @@ import { RedisModule } from './redis/redis.module.js';
     OrdersModule, //       POST /orders｜/orders/preview｜GET /orders/:id
     QuotesModule, //       WS   /ws/quotes（即時報價）
 
-    // 【後續單元回來加】目錄已建好，等對應單元實作：
-    //   DemoModule    → 單元 4.3（故障注入，動態模組）
+    // ── Demo 控制台（動態模組）★ ────────────────────────────────
+    //
+    //   `forRoot()` 依環境決定要不要註冊 controller 與 middleware。
+    //   關閉時 /demo/* 的路由**根本不存在**（404），而不是掛上去再擋。
+    //   詳見 demo.module.ts。
+    DemoModule.forRoot({ enabled: isDemoEnabled }),
   ],
 
   providers: [
