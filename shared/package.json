@@ -15,7 +15,8 @@
     "./money": "./src/money.ts",
     "./market-rules": "./src/market-rules.ts",
     "./errors": "./src/errors.ts",
-    "./schemas": "./src/schemas/index.ts"
+    "./schemas": "./src/schemas/index.ts",
+    "./simulation": "./src/simulation/index.ts"
   },
   "types": "./src/index.ts",
   "scripts": {

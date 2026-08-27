@@ -40,7 +40,7 @@ import { createClient } from 'redis';
 
 import { QUOTE_CHANNEL, cents, type Quote } from '@digital-wealth/shared';
 
-import { step, type WalkerState } from './walker.js';
+import { step, type WalkerState } from '@digital-wealth/shared/simulation';
 
 // ============================================================================
 // 設定

@@ -26,8 +26,15 @@ import pg from 'pg';
 
 import { env } from '../../config/env.js';
 import { AuthService } from '../../modules/auth/auth.service.js';
-import { buildSeedData, type AccountScenario, type SeedData } from './factory.js';
-import { INSTRUMENT_SEEDS } from './instruments.js';
+// 模擬層住在 shared —— 三個地方共用同一份規則
+// （api 的 seed、market-feed、瀏覽器的 MSW mock）。
+import {
+  DEFAULT_LOT_SIZE,
+  INSTRUMENT_SEEDS,
+  buildSeedData,
+  type AccountScenario,
+  type SeedData,
+} from '@digital-wealth/shared/simulation';
 
 const { Client } = pg;
 
@@ -196,7 +203,7 @@ async function insertInstruments(
       `INSERT INTO instruments (symbol, name, market, lot_size, prev_close_cents)
        VALUES ($1, $2, $3, $4, $5)
        RETURNING id`,
-      [instrument.symbol, instrument.name, instrument.market, 1000, prevClose],
+      [instrument.symbol, instrument.name, instrument.market, DEFAULT_LOT_SIZE, prevClose],
     );
 
     const id = rows[0]?.id;

@@ -28,6 +28,17 @@
  */
 
 /** 標的的種子定義。價格用「元」表示，寫進資料庫前才換算成分。 */
+/**
+ * 交易單位（一張幾股）。台股一律 1,000 股。
+ *
+ * 原本這個數字寫死在 api 的 seed.ts 裡。瀏覽器的 MSW mock 也需要它
+ * 之後就變成兩份 —— 而「兩個地方各有一個 1000」正是 shared 存在的理由。
+ *
+ * （零股交易的最小單位是 1 股，所以下單的股數不受這個值限制；
+ *   它只影響顯示上的「幾張幾股」換算。）
+ */
+export const DEFAULT_LOT_SIZE = 1000;
+
 export interface InstrumentSeed {
   /** 股票代號 */
   readonly symbol: string;

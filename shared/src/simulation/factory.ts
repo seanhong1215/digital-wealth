@@ -46,7 +46,7 @@ import {
   multiply,
   subtract,
   weightedAverageCost,
-} from '@digital-wealth/shared';
+} from '../index.js';
 
 import { INSTRUMENT_SEEDS, type InstrumentSeed } from './instruments.js';
 import { chance, createRng, pick, randomInt, randomNormal, type Rng } from './rng.js';
