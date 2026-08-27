@@ -34,6 +34,7 @@ import { NavLink, Navigate, Outlet, Route, Routes, useLocation } from 'react-rou
 import { APP_NAME } from '@digital-wealth/shared';
 
 import { useSession } from './features/auth/api/session';
+import { DemoConsole } from './features/demo/components/DemoConsole';
 import { LoginPage } from './routes/LoginPage';
 import { PortfolioPage } from './routes/PortfolioPage';
 import { TransactionsPage } from './routes/TransactionsPage';
@@ -42,14 +43,26 @@ import { OrderForm } from './routes/trade/OrderForm';
 import { OrderResult } from './routes/trade/OrderResult';
 import { SelectInstrument } from './routes/trade/SelectInstrument';
 import { TradeLayout } from './routes/trade/TradeLayout';
-import { Skeleton } from './shared/ui';
+import { Card, ErrorState, Skeleton } from './shared/ui';
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
+    <>
+      {/* ── Demo 控制台放在**路由之外** ★ ────────────────────────────
+          
+          一開始放在 AppShell 裡（也就是登入之後才會出現），結果踩到
+          一個經典的自鎖：開啟「伺服器錯誤」故障 → /auth/me 回 500
+          → 被判定未登入 → 導向登入頁 → 登入頁沒有控制台
+          → **沒有任何 UI 能把故障關掉**，只能自己去改網址或重啟容器。
 
-      <Route element={<RequireAuth />}>
+          放在最外層之後，控制台在任何畫面都在（登入頁、錯誤頁、
+          載入中），永遠有路可以把故障關掉。 */}
+      <DemoConsole />
+
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+
+        <Route element={<RequireAuth />}>
         <Route path="/portfolio" element={<PortfolioPage />} />
         <Route path="/transactions" element={<TransactionsPage />} />
 
@@ -61,8 +74,9 @@ export default function App() {
         </Route>
       </Route>
 
-      <Route path="*" element={<Navigate to="/portfolio" replace />} />
-    </Routes>
+        <Route path="*" element={<Navigate to="/portfolio" replace />} />
+      </Routes>
+    </>
   );
 }
 
@@ -84,7 +98,7 @@ export default function App() {
  *   這是前端最常見的三態誤判。
  */
 function RequireAuth() {
-  const { data: session, isLoading } = useSession();
+  const { data: session, isLoading, error, refetch } = useSession();
   const location = useLocation();
 
   if (isLoading) {
@@ -94,6 +108,27 @@ function RequireAuth() {
           <Skeleton className="h-32 w-full" />
           <Skeleton className="h-48 w-full" />
         </div>
+      </AppShell>
+    );
+  }
+
+  // ── 「查不到身分」和「沒有登入」是兩件事 ★ ────────────────────
+  //
+  //   useSession 只把 401 轉成 `null`（＝確定沒登入）。其他錯誤
+  //   （500、逾時、網路不通）會拋出來 —— 那代表「**不知道**有沒有登入」。
+  //
+  //   把後者也當成「沒登入」而導向登入頁是錯的，而且會很難用：
+  //   伺服器掛掉時使用者被踢到登入頁，然後登入也失敗（同樣掛著），
+  //   看起來像是「我的密碼錯了」。真正的問題完全被藏住。
+  //
+  //   正確做法是顯示錯誤與重試按鈕，並且**留在原本的網址上** ——
+  //   後端恢復後按重試就能繼續，不會弄丟他原本在看的頁面。
+  if (error) {
+    return (
+      <AppShell>
+        <Card>
+          <ErrorState error={error} onRetry={() => void refetch()} />
+        </Card>
       </AppShell>
     );
   }
