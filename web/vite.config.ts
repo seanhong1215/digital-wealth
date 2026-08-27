@@ -28,6 +28,23 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   plugins: [react(), tailwindcss()],
 
+  /**
+   * 網站的根路徑。★
+   *
+   * ── 為什麼需要它 ─────────────────────────────────────────────
+   *
+   *   GitHub Pages 把專案網站放在 `https://<帳號>.github.io/<repo>/`，
+   *   不是網域根目錄。而 Vite 產出的 index.html 預設用絕對路徑引用
+   *   資源（`/assets/index-xxx.js`）—— 在子路徑下那會 404，
+   *   畫面一片空白，而且 console 只說「找不到檔案」，看不出是路徑問題。
+   *
+   *   `base` 讓 Vite 把所有資源路徑加上前綴。
+   *
+   *   本機開發與 Docker 版都跑在根目錄，所以預設是 '/'；
+   *   GitHub Actions 建置時用環境變數覆寫成 '/<repo>/'。
+   */
+  base: process.env.VITE_BASE_PATH ?? '/',
+
   server: {
     port: 5173,
     proxy: {

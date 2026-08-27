@@ -1,0 +1,112 @@
+# ==============================================================================
+# .github/workflows/deploy-pages.yml — 前端展示版部署到 GitHub Pages
+#
+# 這個檔案是什麼：
+#   把前端建置成靜態檔（後端用 MSW 模擬），推到 GitHub Pages。
+#
+# ── 為什麼只部署前端 ★ ─────────────────────────────────────────────
+#
+#   這個專案需要 PostgreSQL ＋ Redis ＋ 兩個 Node 服務。免費方案的現實：
+#
+#     · Render 的免費 PostgreSQL **30 天就過期**，再 14 天寬限後刪庫
+#     · 免費 Web Service 閒置 15 分鐘後休眠，冷啟動要數十秒
+#     · market-feed 是背景常駐程序，免費方案不提供 Background Worker
+#
+#   而作品集最常見的死法就是「六個月後面試官點進去，畫面全白」——
+#   30 天比六個月還糟。
+#
+#   所以拆成兩種展示：
+#
+#     GitHub Pages（這個檔案）  前端 UI —— 靜態託管，沒有伺服器就沒有
+#                               到期問題，五年後打開還是一樣
+#     本機 docker compose up    完整全端 —— 真的行鎖、真的 pub/sub
+#
+#   README 有把界線寫清楚，不會讓人誤以為線上版就是全部。
+#
+# ── 為什麼不用 npm ci --workspace=@digital-wealth/web ────────────
+#
+#   前端 import 了 `@digital-wealth/shared` 的原始碼（契約與模擬層）。
+#   只裝 web 的話 npm 不會建立 shared 的 symlink，build 會直接失敗。
+#   裝整個 workspace 換來設定簡單，CI 的 cache 也會處理掉重複安裝。
+# ==============================================================================
+
+name: 部署前端展示版
+
+on:
+  push:
+    branches: [main]
+  # 手動觸發。改完 README 想重新部署、或想確認流程還能跑時用。
+  workflow_dispatch:
+
+# GitHub Pages 需要的權限。預設的 GITHUB_TOKEN 沒有這些，要明確給。
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同時只跑一個部署。連續推兩次 commit 時，取消排隊中的那次 ——
+# 但**不取消進行中的**（cancel-in-progress: false），
+# 因為部署到一半被砍掉會讓 Pages 停在半完成的狀態。
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 安裝相依
+        run: npm ci
+
+      - name: 型別檢查
+        # ★ 部署前先擋一次型別。build 失敗總比部署一個壞掉的版本好 ——
+        #   而且 GitHub Pages 沒有「回滾」按鈕，推壞了只能再推一次。
+        run: npm run typecheck
+
+      - name: 測試
+        run: npm test
+
+      - name: 建置（MSW 模式）
+        env:
+          # 開啟瀏覽器裡的假後端。少了這個變數，網站會去打
+          # 不存在的 /api/v1，整頁錯誤。
+          VITE_MOCK_API: '1'
+          # GitHub Pages 的專案網站在 /<repo>/ 底下。
+          # 用 github.event.repository.name 自動帶入，改 repo 名不用改這裡。
+          VITE_BASE_PATH: /${{ github.event.repository.name }}/
+        run: npm run build -w @digital-wealth/web
+
+      - name: 準備 SPA 退回
+        # ★ GitHub Pages 是純靜態託管，沒有 nginx 的 try_files。
+        #
+        #   直接開 /digital-wealth/transactions 時，Pages 找不到那個檔案
+        #   會回傳 404.html。把 index.html 複製成 404.html 之後，
+        #   SPA 就會被載入，React Router 再依網址決定顯示哪一頁。
+        #
+        #   （狀態碼仍然是 404，SEO 不理想，但這是作品集不是內容網站。）
+        run: cp web/dist/index.html web/dist/404.html
+
+      - name: 上傳
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

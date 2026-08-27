@@ -91,3 +91,6 @@ desktop.ini
 
 # demo 影片的原始素材（成品才進版控）
 docs/screenshots/raw/
+
+# 前端建置產物（GitHub Actions 會自己 build，不進版控）
+web/dist/

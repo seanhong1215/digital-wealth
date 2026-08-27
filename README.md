@@ -28,7 +28,37 @@
 
 ---
 
-## 一行啟動
+## 兩種展示，界線很清楚
+
+| | 看什麼 | 怎麼跑 |
+|---|---|---|
+| **線上版**（GitHub Pages） | **前端 UI** —— 版面、互動、狀態處理、設計系統 | 點連結就好 |
+| **本機版**（Docker Compose） | **全端架構** —— DB 行鎖、Redis pub/sub、真實 WebSocket | `docker compose up -d` |
+
+線上版沒有後端。資料由瀏覽器裡的 [MSW](https://mswjs.io/) 提供，
+而那份假資料是用 `shared/simulation` 產生的 —— 跟真實後端 seed **同一份規則、同一顆種子**，
+所以兩邊的數字完全一致，不是另外編的一套。
+
+**線上版演不出來的**：並行競態（`SELECT … FOR UPDATE`）。瀏覽器的 JavaScript 是單執行緒，
+不可能有兩個請求同時讀到舊餘額 —— 而那正是這個專案技術密度最高的地方。
+要看那個，得跑本機版。
+
+> **為什麼不把後端也部署上去**：免費方案撐不住。Render 的免費 PostgreSQL
+> [30 天就過期](https://render.com/changelog/free-postgresql-instances-now-expire-after-30-days-previously-90)、
+> 再 14 天寬限後刪庫；免費 Web Service 閒置 15 分鐘休眠；
+> market-feed 是背景常駐程序，免費方案根本不提供 Background Worker。
+>
+> 而作品集最常見的死法就是「六個月後點進去畫面全白」—— 30 天比六個月還糟。
+> 靜態託管沒有伺服器，也就沒有到期問題。決策紀錄見 [`adr/0004`](docs/adr/0004-local-only-no-cloud-deploy.md)。
+
+### 前端能跑在假後端上，本身就是一個架構證明
+
+元件不直接呼叫 `fetch`（一律經由 feature 的 `api` 層），而 `api` 層只認得 HTTP 契約。
+抽掉後端、換一個講同樣契約的東西，整個前端**一行都不用改** —— 這是分層有沒有真的存在的檢驗。
+
+---
+
+## 一行啟動（本機全端版）
 
 ```bash
 cp .env.example .env          # 填入 JWT_SECRET：openssl rand -base64 32
@@ -96,7 +126,8 @@ docker compose stop market-feed
 | P1 | 查詢 API、總覽頁、交易明細、虛擬滾動 | ✅ |
 | P2 | market-feed、Redis pub/sub、WebSocket、重連與降級 | ✅ |
 | P3 | 下單：DB transaction、行鎖、冪等鍵 | ✅ |
-| P4 | Demo 控制台（後端故障注入）、60 秒 demo 影片 | ⬜ 未做 |
+| P4 | Demo 控制台（後端故障注入）、60 秒 demo 影片 | ✅ |
+| 交付 | GitHub Pages 前端展示版（MSW 假後端） | ✅ |
 
 **明確不做**（理由見 [`README` 第 7 節](#7-功能範圍)）：註冊與 OAuth、多使用者、線上部署、i18n、深色模式（token 已預留）、微服務、K 線圖、PWA。
 
@@ -105,7 +136,9 @@ docker compose stop market-feed
 - **模擬撮合是同步的、限價全額成交** —— 不模擬部分成交或排隊。憑空捏造的撮合邏輯會降低可信度，而 `orders` / `executions` 分表已為真實撮合預留空間
 - **只有一個 demo 帳號** —— 認證做到最小可用的 JWT ＋ httpOnly cookie，不做註冊流程
 - **`ORDER_REJECTED` 錯誤碼已定義但尚無觸發路徑** —— 它屬於 P4 的故障注入
-- **前端 bundle 約 750KB（gzip 220KB）** —— Recharts 佔大宗，尚未做 code splitting
+- **前端 bundle 約 770KB（gzip 231KB）** —— Recharts 佔大宗，尚未做 code splitting
+- **線上版無法演示並行競態** —— 瀏覽器單執行緒，`FOR UPDATE` 要看本機版
+- **線上版的資料只存在記憶體** —— 重新整理就回到初始情境（這是刻意的：每個訪客都從乾淨狀態開始）
 
 ---
 
@@ -152,15 +185,20 @@ market-feed/     報價產生器 → Redis publish。可單獨關掉以演示降
 ## 開發指令
 
 ```bash
-npm run dev:api     # 後端（:3000，watch 模式）
-npm run dev:web     # 前端（:5173，5173 被佔用時自動退到 5174）
-npm run dev:feed    # 報價產生器
-npm test            # 108 個測試
-npm run typecheck   # 全 workspace 型別檢查
-npm run db          # psql 進資料庫
+npm run dev:api      # 後端（:3000，watch 模式）
+npm run dev:web      # 前端（:5173，5173 被佔用時自動退到 5174）
+npm run dev:feed     # 報價產生器
+npm run dev:mock     # 前端 + 瀏覽器假後端（不需要 api / DB / Redis）
+npm test             # 108 個測試
+npm run typecheck    # 全 workspace 型別檢查
+npm run db           # psql 進資料庫
+npm run build:pages  # 建置 GitHub Pages 版本到 web/dist
 ```
 
 容器版與本機開發版**不能同時跑** —— 兩者都要綁 :3000。
+
+`dev:mock` 是線上展示版的本機預覽：不用起任何後端服務，
+`web/src/mocks` 底下的 MSW 會攔截所有請求。適合只改 UI 的時候。
 
 ---
 ---
