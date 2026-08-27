@@ -1,0 +1,22 @@
+{
+  "name": "@fintech/market-feed",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "報價產生器 — 模擬市場 tick 並推送到 Redis",
+  "scripts": {
+    "start": "node --env-file-if-exists=../.env --import @swc-node/register/esm-register src/main.ts",
+    "start:dev": "node --env-file-if-exists=../.env --import @swc-node/register/esm-register --watch src/main.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fintech/shared": "*",
+    "pg": "^8.13.0",
+    "redis": "^4.7.0"
+  },
+  "devDependencies": {
+    "@swc-node/register": "^1.10.0",
+    "@swc/core": "^1.10.0",
+    "@types/pg": "^8.11.0"
+  }
+}

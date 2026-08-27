@@ -8,12 +8,13 @@
     "workspaces 只列出「已經有 package.json」的子專案。",
     "npm 找不到對應的 package.json 會直接報錯，所以不能先寫好佔位。",
     "後續單元建立子專案時，記得回來把名字加進下面這個陣列：",
-    "  market-feed → 單元 2.1（報價產生器）"
+    "（目前四個子專案都已建立，這份清單保留作為紀錄）"
   ],
   "workspaces": [
     "shared",
     "api",
-    "web"
+    "web",
+    "market-feed"
   ],
   "engines": {
     "node": ">=20"
@@ -25,6 +26,7 @@
 
     "dev:api": "npm run start:dev -w @fintech/api",
     "dev:web": "npm run dev -w @fintech/web",
+    "dev:feed": "npm run start:dev -w @fintech/market-feed",
     "migrate": "npm run migrate -w @fintech/api",
     "seed": "npm run seed -w @fintech/api",
 
