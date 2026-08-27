@@ -1,4 +1,165 @@
-# PROJECT.md — 數位財富管理 MVP
+# Shawn 財富 — 數位財富管理
+
+> 台股情境的全端交易系統示範。**虛構品牌，與任何真實金融機構無關；所有資料由程式產生，不構成任何投資建議。**
+>
+> React 19 · NestJS 11 · PostgreSQL 16 · Redis 7 · TypeScript strict · Docker Compose
+>
+> `Last verified: 2026-08`
+
+---
+
+## 這個專案要展示什麼
+
+不是 CRUD。是金融場域裡三個**真的會讓錢出錯**的問題，以及各自的解法。
+
+| 問題 | 會發生什麼 | 解法 | 程式碼 |
+|---|---|---|---|
+| **並行競態**<br>（lost update） | 兩個請求同時讀到舊餘額，扣款互相覆蓋 —— 花了 16,000 元，餘額只少 8,000 | `SELECT … FOR UPDATE` 行鎖，`READ COMMITTED` 隔離等級 | [`orders.repository.ts`](api/src/modules/orders/orders.repository.ts) |
+| **部分失敗** | 扣了款但沒寫持倉，錢憑空蒸發 | 11 個步驟包在同一個 `BEGIN/COMMIT` | [`orders.service.ts`](api/src/modules/orders/orders.service.ts) |
+| **重複請求** | 使用者連點兩次，成立兩筆委託 | 冪等鍵雙層防護：Redis `SET NX EX`（快速路徑）＋ DB `UNIQUE`（永久防線） | [`orders.service.ts`](api/src/modules/orders/orders.service.ts) |
+
+**實測**：5 筆並行下單只成立 1 筆，餘額精確為 `126,103,517 − 88,926,500 = 37,177,017`。
+
+其餘三個支撐性的決策：
+
+- **金額一律用整數「分」＋ branded type** —— `type Cents = number & { __brand: 'Cents' }`。浮點誤差在金融系統不可接受，而 branded type 讓「元」和「分」混用在編譯期就爆掉。見 [`adr/0005`](docs/adr/0005-money-as-bigint-cents.md)
+- **前後端契約只有一份** —— zod schema、金額運算、台股規則、錯誤碼全住在 `shared/`，被 web / api / market-feed 三個程序共用。改一個欄位，三邊同時編譯失敗。這是選 NestJS 而不是 Spring Boot 的實際理由，見 [`adr/0002`](docs/adr/0002-nestjs-over-spring-boot.md)
+- **降級是設計的一部分** —— 報價斷了，持倉、明細、下單全都還能用。可以當場演示（見下方）
+
+---
+
+## 一行啟動
+
+```bash
+cp .env.example .env          # 填入 JWT_SECRET：openssl rand -base64 32
+docker compose up -d
+```
+
+開 **http://localhost:8090** — demo 帳號 `demo@fintech.local` / `demo1234`（登入頁有「一鍵填入」）。
+
+Migration 與 seed 全自動，無任何手動步驟。實測從 `docker compose down -v` 的全空狀態起算：
+
+```
+17 秒  postgres / redis / api / market-feed / web 五個服務就緒
+       └ 自動建 7 張表、寫入 3,001 筆明細、11 檔持倉、262 天快照
+```
+
+需要 Docker Desktop 或 Docker Engine，約 1.5GB 磁碟空間。
+
+---
+
+## 畫面
+
+| 投資總覽（即時報價） | 下單確認 |
+|---|---|
+| ![投資總覽](docs/screenshots/01-portfolio.png) | ![下單確認](docs/screenshots/02-order-confirm.png) |
+| 市值、未實現損益由前端用 WebSocket 推來的價格即時計算 | 費用由**後端**試算 —— 權威來源只有一個 |
+
+| 下單被拒 | 報價中斷（降級） |
+|---|---|
+| ![下單被拒](docs/screenshots/03-order-rejected.png) | ![報價中斷](docs/screenshots/04-quote-degraded.png) |
+| 玫瑰紅（非漲色紅）＋ 後端算好的差額 ＋ 可追蹤的 traceId | 橫幅說明、價格保留最後值，其他功能不受影響 |
+
+---
+
+## 三十秒演示：降級
+
+```bash
+docker compose stop market-feed
+```
+
+0.3 秒內橫幅出現、「持股市值」的來源標示從「即時報價」變成「最後收到的報價」，
+而**持倉、明細、下單完全照常**。`docker compose start market-feed` 即可恢復。
+
+這是 market-feed 被拆成獨立服務的唯一理由 —— 報價邏輯如果住在 api 裡，
+要演這一段就得把整個後端關掉，那什麼都不能用了，證明不了任何事。
+
+---
+
+## 目前完成度
+
+| 階段 | 內容 | 狀態 |
+|---|---|---|
+| P0 | Docker Compose、schema、migration、seed、金額型別 | ✅ |
+| P1 | 查詢 API、總覽頁、交易明細、虛擬滾動 | ✅ |
+| P2 | market-feed、Redis pub/sub、WebSocket、重連與降級 | ✅ |
+| P3 | 下單：DB transaction、行鎖、冪等鍵 | ✅ |
+| P4 | Demo 控制台（後端故障注入）、60 秒 demo 影片 | ⬜ 未做 |
+
+**明確不做**（理由見 [`README` 第 7 節](#7-功能範圍)）：註冊與 OAuth、多使用者、線上部署、i18n、深色模式（token 已預留）、微服務、K 線圖、PWA。
+
+### 已知限制
+
+- **模擬撮合是同步的、限價全額成交** —— 不模擬部分成交或排隊。憑空捏造的撮合邏輯會降低可信度，而 `orders` / `executions` 分表已為真實撮合預留空間
+- **只有一個 demo 帳號** —— 認證做到最小可用的 JWT ＋ httpOnly cookie，不做註冊流程
+- **`ORDER_REJECTED` 錯誤碼已定義但尚無觸發路徑** —— 它屬於 P4 的故障注入
+- **前端 bundle 約 750KB（gzip 220KB）** —— Recharts 佔大宗，尚未做 code splitting
+
+---
+
+## 專案結構
+
+```
+shared/          ★ 前後端共用契約 —— zod schema、money.ts、market-rules.ts、errors.ts
+  └ 被 web / api / market-feed 三個程序 import 同一份原始碼
+
+api/             NestJS。Controller → Service → Repository 三層
+  modules/
+    orders/      ★ 下單：transaction + 行鎖 + 冪等（本專案技術密度最高處）
+    quotes/      WebSocket Gateway，Redis 訂閱 → 依訂閱扇出
+  database/      連線池、交易封裝、migration、seed factory
+
+web/             React 19 + Vite。依「功能」切，不依「技術」切
+  features/*/api/          ★ 唯一與後端對話的層
+  features/*/components/
+  shared/{ui,lib}
+
+market-feed/     報價產生器 → Redis publish。可單獨關掉以演示降級
+```
+
+**兩條硬性規則**（分層是否真實存在的證據）：
+
+1. 前端：`features` 底下的 `components` 不得直接呼叫 `fetch`，一律經由同 feature 的 `api` 層
+2. 後端：Controller 不得直接碰資料庫，一律經由 Service → Repository
+
+---
+
+## 從哪裡開始讀
+
+想在十分鐘內看懂這個專案，照這個順序：
+
+1. [`shared/src/money.ts`](shared/src/money.ts) — 為什麼金額不能用 float，branded type 怎麼防呆
+2. [`api/src/modules/orders/orders.service.ts`](api/src/modules/orders/orders.service.ts) — **★ 整個專案最值得讀的檔案**。下單的 11 個步驟，以及每一步為什麼在交易內／外
+3. [`web/src/features/quotes/api/quote-store.ts`](web/src/features/quotes/api/quote-store.ts) — 為什麼報價不放 TanStack Query，`useSyncExternalStore` 解決了什麼
+4. [`docs/07-reading-guide.md`](docs/07-reading-guide.md) — 完整的程式碼閱讀路線圖
+
+決策紀錄在 [`docs/adr/`](docs/adr/)，每則一頁，格式是「背景 → 決策 → 替代方案 → 後果」。
+
+---
+
+## 開發指令
+
+```bash
+npm run dev:api     # 後端（:3000，watch 模式）
+npm run dev:web     # 前端（:5173，5173 被佔用時自動退到 5174）
+npm run dev:feed    # 報價產生器
+npm test            # 108 個測試
+npm run typecheck   # 全 workspace 型別檢查
+npm run db          # psql 進資料庫
+```
+
+容器版與本機開發版**不能同時跑** —— 兩者都要綁 :3000。
+
+---
+---
+
+<!--
+  以下為專案規劃文件（原 PROJECT.md）。
+  上方是給第一次看到這個 repo 的人；下方是完整的範圍決策與理由。
+-->
+
+# 專案規劃
+
 
 > 全端作品集專案｜React 19 + NestJS + PostgreSQL + Redis
 > 版本 0.2｜2026-08-13｜維護者：Shawn Ben
@@ -23,8 +184,6 @@
 | 技術密度 | 即時報價串流、大量明細、多步驟下單、金額精度、**交易一致性**、樂觀更新與回滾 —— 難點集中 |
 | 稀缺性 | 市面上作品集多為電商／後台 CRUD，金融場域的正確處理相對少見 |
 
-**次選題目**（本專案不做，備忘）：保險理賠線上申請 —— schema 驅動表單引擎 ＋ 檔案上傳 ＋ 進度追蹤。適合主打 form architecture 的方向。
-
 ---
 
 ## 2. 目標排序
@@ -35,8 +194,6 @@
 2. **可維護的全端架構** — 分層清楚、型別邊界明確、前後端契約單一來源
 3. **產品判斷力** — 說得出為什麼砍掉這些功能、MVP 邊界怎麼畫
 4. **視覺一致性** — 有 design token 和一致元件即可，不做動畫雕琢
-
-> **v0.2 調整**：原本「可維護的前端架構」獨佔第一。改為全端定位後，資料一致性（DB transaction、行鎖、冪等）升為首位 —— 那是這個題目最難、也最少人做對的部分。
 
 ### 驗收標準
 
@@ -96,9 +253,7 @@
 
 ### 虛構品牌設定
 
-- **暫定名稱**：`<BRAND>` ⏳ **待決定**
-  - 原案 `潮汐理財 / Tidal Wealth` **建議更換** —— `Tidal` 撞名高知名度音樂串流品牌
-  - 送出前需 Google 檢索 ＋ 經濟部智慧財產局第 36 類（金融保險）商標查詢
+- **名稱**：**Shawn 財富**（虛構品牌）
 - **主色**：中性深藍 `#16243A`，50–950 共 11 階色階
 - **強調色**：**靛藍 `#6E6DE4`**（原琥珀 `#B45309` 與台股漲色紅撞色，已降級為警告色）
 - **字體**：Noto Sans TC；數字一律 `font-variant-numeric: tabular-nums`
@@ -322,7 +477,7 @@ type FaultKind =
 
 ## 12. 備註
 
-- ⏳ **品牌名稱待決定** —— `<BRAND>` 為佔位符，確定後全域取代
+- ✅ **品牌名稱** —— **Shawn 財富**。字串收斂在 `shared/src/index.ts` 的 `APP_NAME`，UI 不寫死，改名只需改一行
 - README 需附「本專案為虛構品牌，與任何真實金融機構無關」聲明
 - 介面不得提供任何投資建議（合規紅線的延伸）
 
