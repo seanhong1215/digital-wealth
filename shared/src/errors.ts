@@ -20,9 +20,9 @@
  *   契約層。後端的 Exception Filter 用它產生回應，
  *   前端的錯誤處理用它決定 UI。
  *
- * 目前狀態（單元 1.1）：
- *   只放這個階段用得到的錯誤碼。下單相關的（ORDER_REJECTED、
- *   DUPLICATE_REQUEST…）等 Phase 3 實作下單時再補。
+ * 目前狀態（下單單元）：
+ *   認證、請求、系統、**下單業務規則**四組都已齊備。
+ *   仍未實作的只剩 RATE_LIMITED（需要 Rate Limiting 中介層）。
  *   完整清單見 docs/02-backend.md 的錯誤碼表。
  */
 
@@ -55,6 +55,31 @@ export const ERROR_CODES = {
   VALIDATION_FAILED: 'VALIDATION_FAILED',
   /** 404｜資源不存在 → 空狀態頁 */
   NOT_FOUND: 'NOT_FOUND',
+
+  // ── 下單業務規則 ─────────────────────────────────────────────
+  //
+  // 這一組全部是 422（Unprocessable Entity）而不是 400。
+  // 差別在於：400 是「你的請求我看不懂」，422 是「請求我看懂了，
+  // 格式也對，但業務規則不允許」。餘額不足的請求格式完全正確，
+  // 回 400 會誤導前端往「表單填錯」的方向處理。
+  //
+  /**
+   * 409｜冪等鍵重複 → **靜默忽略，顯示原本的成功結果**
+   *
+   * 這個碼的前端處理最違反直覺：不該顯示錯誤。使用者連點兩次，
+   * 從他的角度看只是點了兩下，第一次已經成功了。
+   */
+  DUPLICATE_REQUEST: 'DUPLICATE_REQUEST',
+  /** 422｜買進時可用餘額不足 → 紅色提示 ＋ 顯示差額 */
+  INSUFFICIENT_FUNDS: 'INSUFFICIENT_FUNDS',
+  /** 422｜賣出時持股不足 → 同上 */
+  INSUFFICIENT_POSITION: 'INSUFFICIENT_POSITION',
+  /** 422｜標的已停止交易 → 下單按鈕停用 ＋ 說明 */
+  INSTRUMENT_NOT_TRADABLE: 'INSTRUMENT_NOT_TRADABLE',
+  /** 422｜限價超出當日漲跌停 → 價格欄位錯誤 */
+  PRICE_OUT_OF_RANGE: 'PRICE_OUT_OF_RANGE',
+  /** 422｜委託被拒（模擬撮合失敗）→ 結果頁失敗分支 ＋ 樂觀更新回滾 */
+  ORDER_REJECTED: 'ORDER_REJECTED',
 
   // ── 系統 ─────────────────────────────────────────────────────
   /** 503｜下游服務異常（資料庫、Redis）→ 全頁錯誤 ＋ 重試按鈕 */
@@ -132,6 +157,12 @@ export const ERROR_HTTP_STATUS: Record<ErrorCode, number> = {
   AUTH_INVALID_CREDENTIALS: 401,
   VALIDATION_FAILED: 400,
   NOT_FOUND: 404,
+  DUPLICATE_REQUEST: 409,
+  INSUFFICIENT_FUNDS: 422,
+  INSUFFICIENT_POSITION: 422,
+  INSTRUMENT_NOT_TRADABLE: 422,
+  PRICE_OUT_OF_RANGE: 422,
+  ORDER_REJECTED: 422,
   SERVICE_UNAVAILABLE: 503,
   INTERNAL_ERROR: 500,
 };
@@ -151,6 +182,12 @@ export const ERROR_DEFAULT_MESSAGES: Record<ErrorCode, string> = {
   AUTH_INVALID_CREDENTIALS: '帳號或密碼錯誤',
   VALIDATION_FAILED: '請求格式不正確',
   NOT_FOUND: '找不到指定的資料',
+  DUPLICATE_REQUEST: '這筆委託已經送出過了',
+  INSUFFICIENT_FUNDS: '可用餘額不足',
+  INSUFFICIENT_POSITION: '可賣出的股數不足',
+  INSTRUMENT_NOT_TRADABLE: '這檔標的目前停止交易',
+  PRICE_OUT_OF_RANGE: '委託價格超出今日漲跌停範圍',
+  ORDER_REJECTED: '委託遭拒絕',
   SERVICE_UNAVAILABLE: '服務暫時無法使用，請稍後再試',
   INTERNAL_ERROR: '系統發生未預期的錯誤',
 };

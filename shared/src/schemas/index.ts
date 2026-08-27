@@ -11,3 +11,4 @@ export * from './common.js';
 export * from './auth.js';
 export * from './portfolio.js';
 export * from './transaction.js';
+export * from './order.js';
