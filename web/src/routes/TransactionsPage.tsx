@@ -28,7 +28,7 @@
 import { useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
-import type { TransactionType } from '@fintech/shared';
+import type { TransactionType } from '@digital-wealth/shared';
 
 import { useTransactions } from '../features/transactions/api/queries';
 import { TransactionList } from '../features/transactions/components/TransactionList';

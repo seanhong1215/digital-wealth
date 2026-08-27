@@ -38,7 +38,7 @@ import {
   YAxis,
 } from 'recharts';
 
-import type { Position } from '@fintech/shared';
+import type { Position } from '@digital-wealth/shared';
 
 import {
   usePortfolioSnapshots,

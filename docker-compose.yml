@@ -19,6 +19,19 @@
 # 注意：新版 Docker Compose 已不需要頂層的 `version:` 欄位，寫了反而會警告。
 # ==============================================================================
 
+# ── 專案名稱 ★ ────────────────────────────────────────────────────────────────
+#
+#   不寫的話，Compose 會拿**目錄名**當專案名 —— 這台機器上目錄叫 FinTech，
+#   於是容器網路變成 fintech_default、資料卷變成 fintech_postgres_data。
+#
+#   問題是目錄名不在版控裡。別人 clone 到不同名字的資料夾，就會得到
+#   不同的網路與資料卷名稱 —— 兩個人的環境長得不一樣，而且
+#   `docker volume ls` 看到的東西對不上文件。
+#
+#   明確寫出來之後，專案名與目錄無關，任何人 clone 到任何路徑
+#   都會得到 digital-wealth_postgres_data。
+name: digital-wealth
+
 services:
   # ============================================================================
   # postgres — 權威資料儲存
@@ -35,9 +48,9 @@ services:
     #     避免半年後重新 build 時基底變了導致行為不同。見 PROJECT.md §11
     image: postgres:16-alpine
 
-    # 容器名稱。不設的話 Docker 會自動產生像 fintech-postgres-1 這種名字，
-    # 明確命名之後 `docker logs fintech-postgres` 這類指令比較好打。
-    container_name: fintech-postgres
+    # 容器名稱。不設的話 Docker 會自動產生像 digital-wealth-postgres-1 這種名字，
+    # 明確命名之後 `docker logs digital-wealth-postgres` 這類指令比較好打。
+    container_name: digital-wealth-postgres
 
     # 重啟策略：
     #   unless-stopped = 容器異常結束時自動重啟，但如果是你手動 stop 的就不重啟。
@@ -113,7 +126,7 @@ services:
   # ============================================================================
   redis:
     image: redis:7-alpine
-    container_name: fintech-redis
+    container_name: digital-wealth-redis
     restart: unless-stopped
     environment:
       TZ: Asia/Taipei
@@ -162,7 +175,7 @@ services:
       context: .
       dockerfile: api/Dockerfile
 
-    container_name: fintech-api
+    container_name: digital-wealth-api
     restart: unless-stopped
 
     environment:
@@ -175,7 +188,7 @@ services:
       # 不是你的電腦。要連別的容器，得用 Compose 的服務名 ——
       # Docker 內建的 DNS 會把 `postgres` 解析成該容器的 IP。
       #
-      # 對照：你在 WSL 裡跑 `npm run start:dev -w @fintech/api` 時，
+      # 對照：你在 WSL 裡跑 `npm run start:dev -w @digital-wealth/api` 時，
       # 用的是 .env 裡的預設值 localhost，走的是上面 ports 映射出來的通道。
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
@@ -258,7 +271,7 @@ services:
       context: .
       dockerfile: market-feed/Dockerfile
 
-    container_name: fintech-market-feed
+    container_name: digital-wealth-market-feed
     restart: unless-stopped
 
     environment:
@@ -305,7 +318,7 @@ services:
       context: .
       dockerfile: web/Dockerfile
 
-    container_name: fintech-web
+    container_name: digital-wealth-web
     restart: unless-stopped
 
     ports:

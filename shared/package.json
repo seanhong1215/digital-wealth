@@ -1,5 +1,5 @@
 {
-  "name": "@fintech/shared",
+  "name": "@digital-wealth/shared",
   "version": "0.1.0",
   "private": true,
   "description": "前後端共用的契約層 — zod schema、金額運算、錯誤碼",

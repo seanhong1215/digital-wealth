@@ -5,7 +5,7 @@
  */
 
 import { useInfiniteQuery } from '@tanstack/react-query';
-import type { TransactionPage, TransactionType } from '@fintech/shared';
+import type { TransactionPage, TransactionType } from '@digital-wealth/shared';
 
 import { apiGet } from '../../../shared/lib/api-client';
 import { queryKeys } from '../../../shared/lib/query-client';

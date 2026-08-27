@@ -32,7 +32,7 @@ import {
   type OrderDraft,
   type OrderPreview,
   type OrderResult,
-} from '@fintech/shared';
+} from '@digital-wealth/shared';
 
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { authRequired } from '../../common/errors/app.error.js';

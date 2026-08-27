@@ -22,7 +22,7 @@
 #
 # ── build context 同樣是專案根目錄 ────────────────────────────────
 #
-#   前端 import 了 @fintech/shared 的 .ts 原始碼（契約只有一份），
+#   前端 import 了 @digital-wealth/shared 的 .ts 原始碼（契約只有一份），
 #   所以 build 時必須看得到 shared/。只複製 web/ 會直接失敗。
 # ==============================================================================
 
@@ -43,7 +43,7 @@ COPY market-feed/package.json ./market-feed/
 
 # npm ci 會安裝**所有** workspace 的相依。
 #
-# 只想裝 web 的話得用 --workspace=@fintech/web，但那樣 npm 不會
+# 只想裝 web 的話得用 --workspace=@digital-wealth/web，但那樣 npm 不會
 # 建立 shared 的 symlink，前端就 import 不到契約層了。
 # 多裝一些東西換來設定簡單，而且這一層有快取，只有 lockfile 變動才重跑。
 RUN npm ci

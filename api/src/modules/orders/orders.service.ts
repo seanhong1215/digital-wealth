@@ -54,7 +54,7 @@ import {
   type OrderPreview,
   type OrderResult,
   type TradeCost,
-} from '@fintech/shared';
+} from '@digital-wealth/shared';
 
 import { AppError, notFound } from '../../common/errors/app.error.js';
 import { DatabaseService } from '../../database/database.service.js';

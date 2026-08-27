@@ -20,7 +20,7 @@ import {
   type PortfolioSnapshot,
   type PortfolioSummary,
   type SnapshotQuery,
-} from '@fintech/shared';
+} from '@digital-wealth/shared';
 
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { authRequired } from '../../common/errors/app.error.js';

@@ -39,7 +39,7 @@ import {
   RECONNECT_JITTER_MS,
   serverMessageSchema,
   type Quote,
-} from '@fintech/shared';
+} from '@digital-wealth/shared';
 
 // ============================================================================
 // 型別

@@ -14,9 +14,9 @@
  *   Service 算、Repository 寫；factory 算、seed 寫。
  *
  * 執行方式：
- *   npm run seed -w @fintech/api                       # 預設 active 情境
- *   npm run seed -w @fintech/api -- --scenario=new-user
- *   npm run seed -w @fintech/api -- --scenario=active --seed=7
+ *   npm run seed -w @digital-wealth/api                       # 預設 active 情境
+ *   npm run seed -w @digital-wealth/api -- --scenario=new-user
+ *   npm run seed -w @digital-wealth/api -- --scenario=active --seed=7
  *
  * 在架構的哪一層：
  *   維運工具，不屬於執行期的應用程式。
@@ -32,7 +32,7 @@ import { INSTRUMENT_SEEDS } from './instruments.js';
 const { Client } = pg;
 
 /** demo 帳號的登入信箱。單元 1.1 的登入頁會預填這個值。 */
-const DEMO_EMAIL = 'demo@fintech.local';
+const DEMO_EMAIL = 'demo@digital-wealth.local';
 
 /**
  * demo 帳號的密碼（明文）。

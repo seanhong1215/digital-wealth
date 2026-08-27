@@ -35,7 +35,7 @@ cp .env.example .env          # 填入 JWT_SECRET：openssl rand -base64 32
 docker compose up -d
 ```
 
-開 **http://localhost:8090** — demo 帳號 `demo@fintech.local` / `demo1234`（登入頁有「一鍵填入」）。
+開 **http://localhost:8090** — demo 帳號 `demo@digital-wealth.local` / `demo1234`（登入頁有「一鍵填入」）。
 
 Migration 與 seed 全自動，無任何手動步驟。實測從 `docker compose down -v` 的全空狀態起算：
 
@@ -45,6 +45,18 @@ Migration 與 seed 全自動，無任何手動步驟。實測從 `docker compose
 ```
 
 需要 Docker Desktop 或 Docker Engine，約 1.5GB 磁碟空間。
+
+---
+
+## 60 秒 demo
+
+![完整流程](docs/media/demo.gif)
+
+登入 → 投資總覽（報價即時跳動）→ 交易明細（虛擬滾動 3,001 筆）→ 下單被拒（餘額不足）
+→ 下單成交 → 關掉 market-feed 觀察降級。
+
+> 原始畫質版本：[`docs/media/demo.mp4`](docs/media/demo.mp4)（74 秒，未加速）。
+> GIF 為 2.6 倍速，方便在 README 裡直接看完。
 
 ---
 

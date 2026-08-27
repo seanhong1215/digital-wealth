@@ -38,7 +38,7 @@
 import pg from 'pg';
 import { createClient } from 'redis';
 
-import { QUOTE_CHANNEL, cents, type Quote } from '@fintech/shared';
+import { QUOTE_CHANNEL, cents, type Quote } from '@digital-wealth/shared';
 
 import { step, type WalkerState } from './walker.js';
 
@@ -66,9 +66,9 @@ const config = {
   postgres: {
     host: process.env.POSTGRES_HOST ?? 'localhost',
     port: Number(process.env.POSTGRES_PORT ?? 5432),
-    user: process.env.POSTGRES_USER ?? 'fintech',
-    password: process.env.POSTGRES_PASSWORD ?? 'fintech',
-    database: process.env.POSTGRES_DB ?? 'fintech',
+    user: process.env.POSTGRES_USER ?? 'digital_wealth',
+    password: process.env.POSTGRES_PASSWORD ?? 'digital_wealth',
+    database: process.env.POSTGRES_DB ?? 'digital_wealth',
   },
   redisUrl: `redis://${process.env.REDIS_HOST ?? 'localhost'}:${process.env.REDIS_PORT ?? 6379}`,
 };

@@ -13,7 +13,7 @@ import type {
   OrderDraft,
   OrderPreview,
   OrderResult,
-} from '@fintech/shared';
+} from '@digital-wealth/shared';
 
 import { apiGet, apiPost } from '../../../shared/lib/api-client';
 import { invalidateAfterTrade, queryKeys } from '../../../shared/lib/query-client';

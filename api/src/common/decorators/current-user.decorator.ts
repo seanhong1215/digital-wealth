@@ -46,7 +46,7 @@
 import { createParamDecorator, type ExecutionContext } from '@nestjs/common';
 import type { Request } from 'express';
 
-import { type AuthenticatedUser } from '@fintech/shared';
+import { type AuthenticatedUser } from '@digital-wealth/shared';
 
 /**
  * Guard 把身分掛在 request 的哪個欄位。

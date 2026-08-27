@@ -11,7 +11,7 @@
  *   不要在這裡加 useEffect 或訂閱。
  */
 
-import type { Transaction, TransactionType } from '@fintech/shared';
+import type { Transaction, TransactionType } from '@digital-wealth/shared';
 
 import { formatPrice, formatQuantity, formatRelativeTime } from '../../../shared/lib/format';
 import { Badge, MoneyText } from '../../../shared/ui';

@@ -12,7 +12,7 @@
 
 import { Injectable } from '@nestjs/common';
 
-import { cents, type Instrument, type Market } from '@fintech/shared';
+import { cents, type Instrument, type Market } from '@digital-wealth/shared';
 
 import { DatabaseService } from '../../database/database.service.js';
 

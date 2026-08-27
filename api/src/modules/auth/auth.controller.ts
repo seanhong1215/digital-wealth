@@ -38,7 +38,7 @@ import {
   type AuthenticatedUser,
   type AuthSession,
   type LoginRequest,
-} from '@fintech/shared';
+} from '@digital-wealth/shared';
 
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { Public } from '../../common/decorators/public.decorator.js';

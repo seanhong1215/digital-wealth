@@ -29,7 +29,7 @@ import { NestFactory } from '@nestjs/core';
 import { WsAdapter } from '@nestjs/platform-ws';
 import cookieParser from 'cookie-parser';
 
-import { QUOTES_WS_PATH } from '@fintech/shared';
+import { QUOTES_WS_PATH } from '@digital-wealth/shared';
 
 import { AppModule } from './app.module.js';
 import { env } from './config/env.js';

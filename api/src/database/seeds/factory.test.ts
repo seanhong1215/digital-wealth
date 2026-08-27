@@ -25,7 +25,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { cents, isValidTick, weightedAverageCost, type Cents } from '@fintech/shared';
+import { cents, isValidTick, weightedAverageCost, type Cents } from '@digital-wealth/shared';
 
 import { buildSeedData, type AccountScenario, type SeedTransaction } from './factory.js';
 

@@ -6,7 +6,7 @@
  *
  * 關鍵在下面這行 import 的寫法：
  *
- *     import { APP_NAME } from '@fintech/shared';
+ *     import { APP_NAME } from '@digital-wealth/shared';
  *                              ^^^^^^^^^^^^^^^^^
  *                              套件名稱，不是相對路徑
  *
@@ -17,19 +17,19 @@
  *   執行 npm install 時，npm 會在根目錄的 node_modules/ 底下建立一個
  *   symlink（符號連結）：
  *
- *     node_modules/@fintech/shared  →  ../../shared
+ *     node_modules/@digital-wealth/shared  →  ../../shared
  *
- *   之後任何 workspace 寫 import '@fintech/shared'，Node 都會沿著這個
+ *   之後任何 workspace 寫 import '@digital-wealth/shared'，Node 都會沿著這個
  *   連結找到 shared/ 目錄，再依 shared/package.json 的 "exports" 欄位
  *   決定實際載入哪個檔案。
  */
 
 import { describe, it, expect } from 'vitest';
-import { APP_NAME, CURRENCY, CENTS_PER_UNIT } from '@fintech/shared';
+import { APP_NAME, CURRENCY, CENTS_PER_UNIT } from '@digital-wealth/shared';
 
 describe('workspace 連接', () => {
-  it('可以用套件名稱 @fintech/shared 匯入，代表 workspace 已正確連結', () => {
-    expect(APP_NAME).toBe('FinTech');
+  it('可以用套件名稱 @digital-wealth/shared 匯入，代表 workspace 已正確連結', () => {
+    expect(APP_NAME).toBe('Shawn');
   });
 
   it('幣別常數為新台幣', () => {

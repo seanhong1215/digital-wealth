@@ -28,7 +28,7 @@ import {
   instrumentQuerySchema,
   type Instrument,
   type InstrumentQuery,
-} from '@fintech/shared';
+} from '@digital-wealth/shared';
 
 import { notFound } from '../../common/errors/app.error.js';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';

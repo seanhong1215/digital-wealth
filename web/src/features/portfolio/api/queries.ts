@@ -5,7 +5,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import type { Account, PortfolioSnapshot, PortfolioSummary, Position } from '@fintech/shared';
+import type { Account, PortfolioSnapshot, PortfolioSummary, Position } from '@digital-wealth/shared';
 
 import { apiGet } from '../../../shared/lib/api-client';
 import { queryKeys } from '../../../shared/lib/query-client';

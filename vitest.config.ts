@@ -40,13 +40,13 @@ export default defineConfig({
     // 寫在最外層會出現 TS2769: 'deps' does not exist in type 'ServerOptions'。
     server: {
       deps: {
-        // 讓 Vitest 把 @fintech/shared 當成專案內的原始碼處理，而不是
+        // 讓 Vitest 把 @digital-wealth/shared 當成專案內的原始碼處理，而不是
         // 當成外部套件（外部套件預設不會經過 TypeScript transform）。
         //
         // 需要這行的原因：shared 是透過 node_modules 的 symlink 被解析的，
         // Vite 預設會把 node_modules 底下的東西視為「已編譯好的依賴」而跳過轉譯。
         // 但我們的 shared 匯出的是未編譯的 .ts 原始碼，所以要明確要求轉譯它。
-        inline: [/@fintech\//],
+        inline: [/@digital-wealth\//],
       },
     },
   },

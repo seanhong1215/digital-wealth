@@ -37,7 +37,7 @@ import {
   type Order,
   type OrderSideValue,
   type OrderStatusValue,
-} from '@fintech/shared';
+} from '@digital-wealth/shared';
 
 import {
   DatabaseService,

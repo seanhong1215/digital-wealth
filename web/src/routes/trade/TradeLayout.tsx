@@ -30,7 +30,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Outlet, useOutletContext } from 'react-router-dom';
 
-import type { OrderDraft } from '@fintech/shared';
+import type { OrderDraft } from '@digital-wealth/shared';
 
 /**
  * 步驟 2 填好的委託草稿。

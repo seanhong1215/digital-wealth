@@ -19,7 +19,7 @@ import {
   type Transaction,
   type TransactionQuery,
   type TransactionType,
-} from '@fintech/shared';
+} from '@digital-wealth/shared';
 
 import { DatabaseService } from '../../database/database.service.js';
 import {

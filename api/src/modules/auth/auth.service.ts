@@ -19,7 +19,7 @@ import {
   type AuthSession,
   type JwtPayload,
   type LoginRequest,
-} from '@fintech/shared';
+} from '@digital-wealth/shared';
 
 import { invalidCredentials } from '../../common/errors/app.error.js';
 import { AuthRepository, type UserWithAccount } from './auth.repository.js';

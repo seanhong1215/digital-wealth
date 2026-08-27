@@ -30,7 +30,7 @@ import {
   type PortfolioSnapshot,
   type PortfolioSummary,
   type Position,
-} from '@fintech/shared';
+} from '@digital-wealth/shared';
 
 import { PortfolioRepository } from './portfolio.repository.js';
 

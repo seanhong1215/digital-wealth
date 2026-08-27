@@ -24,7 +24,7 @@
 
 import { Controller, Get } from '@nestjs/common';
 
-import { type Account, type AuthenticatedUser } from '@fintech/shared';
+import { type Account, type AuthenticatedUser } from '@digital-wealth/shared';
 
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { authRequired } from '../../common/errors/app.error.js';

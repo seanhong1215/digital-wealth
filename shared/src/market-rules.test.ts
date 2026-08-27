@@ -23,7 +23,7 @@ import {
   isWithinPriceLimits,
   priceLimits,
   tickSize,
-} from '@fintech/shared';
+} from '@digital-wealth/shared';
 
 describe('tickSize() — 最小跳動單位', () => {
   // 每一列是「股價（元）→ 預期跳動單位（元）」，直接對照證交所級距表。

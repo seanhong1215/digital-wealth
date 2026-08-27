@@ -38,7 +38,7 @@
 import { useWindowVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
-import type { Transaction } from '@fintech/shared';
+import type { Transaction } from '@digital-wealth/shared';
 
 import { TransactionRow } from './TransactionRow';
 

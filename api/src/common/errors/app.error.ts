@@ -19,7 +19,7 @@
  *   橫切關注點。Service 層拋出它，Exception Filter 接住它。
  */
 
-import { ERROR_DEFAULT_MESSAGES, type ErrorCode } from '@fintech/shared';
+import { ERROR_DEFAULT_MESSAGES, type ErrorCode } from '@digital-wealth/shared';
 
 /**
  * 帶錯誤碼的應用層錯誤。

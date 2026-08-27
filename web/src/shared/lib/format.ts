@@ -25,7 +25,7 @@
  * 相關文件：docs/03-presentation.md → 格式化規範
  */
 
-import { toMajorUnits, type Cents } from '@fintech/shared';
+import { toMajorUnits, type Cents } from '@digital-wealth/shared';
 
 /**
  * 「沒有這個資料」的顯示。用 em dash 而不是空字串或 "N/A"。

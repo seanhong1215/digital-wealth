@@ -22,7 +22,7 @@
 
 import { Injectable } from '@nestjs/common';
 
-import { cents } from '@fintech/shared';
+import { cents } from '@digital-wealth/shared';
 
 import { DatabaseService } from '../../database/database.service.js';
 

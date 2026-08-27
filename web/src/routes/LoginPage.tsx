@@ -16,11 +16,13 @@
 import { type FormEvent, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 
+import { APP_NAME } from '@digital-wealth/shared';
+
 import { useLogin, useSession } from '../features/auth/api/session';
 import { ApiError } from '../shared/lib/api-client';
 import { Button, Card, Field } from '../shared/ui';
 
-const DEMO_EMAIL = 'demo@fintech.local';
+const DEMO_EMAIL = 'demo@digital-wealth.local';
 const DEMO_PASSWORD = 'demo1234';
 
 export function LoginPage() {
@@ -69,7 +71,7 @@ export function LoginPage() {
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-bg-page px-4 py-12">
       <div className="text-center">
-        <h1 className="text-2xl font-bold text-navy-900">FinTech</h1>
+        <h1 className="text-2xl font-bold text-navy-900">{APP_NAME}</h1>
         <p className="mt-1 text-base text-text-secondary">數位財富管理</p>
       </div>
 

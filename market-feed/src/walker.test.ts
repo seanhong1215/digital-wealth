@@ -14,7 +14,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { cents, isValidTick, priceLimits } from '@fintech/shared';
+import { cents, isValidTick, priceLimits } from '@digital-wealth/shared';
 
 import { step, type WalkerState } from './walker.js';
 

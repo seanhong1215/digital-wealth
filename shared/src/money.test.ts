@@ -38,7 +38,7 @@ import {
   sum,
   toMajorUnits,
   weightedAverageCost,
-} from '@fintech/shared';
+} from '@digital-wealth/shared';
 
 describe('cents() — 建構與驗證', () => {
   it('接受整數，回傳的值與輸入相同', () => {

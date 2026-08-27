@@ -1,11 +1,11 @@
 {
-  "name": "@fintech/web",
+  "name": "@digital-wealth/web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "description": "React 前端 — 投組總覽、交易明細、下單",
   "//shared": [
-    "@fintech/shared 匯出的是未編譯的 .ts（見 shared/package.json）。",
+    "@digital-wealth/shared 匯出的是未編譯的 .ts（見 shared/package.json）。",
     "Vite 對 workspace 內的連結套件不做預先打包，會走一般的轉譯管線，",
     "所以直接吃 .ts 沒問題 —— 這正是「契約只有一份」能成立的技術前提。"
   ],
@@ -16,8 +16,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@fintech/shared": "*",
+    "@digital-wealth/shared": "*",
     "@tanstack/react-query": "^5.62.0",
+    "@tanstack/react-virtual": "^3.14.10",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.1.0",

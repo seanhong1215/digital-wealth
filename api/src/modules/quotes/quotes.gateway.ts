@@ -54,7 +54,7 @@ import {
   jwtPayloadSchema,
   quoteSchema,
   type ServerMessage,
-} from '@fintech/shared';
+} from '@digital-wealth/shared';
 
 import { RedisService } from '../../redis/redis.service.js';
 

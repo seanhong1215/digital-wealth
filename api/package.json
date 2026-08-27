@@ -1,5 +1,5 @@
 {
-  "name": "@fintech/api",
+  "name": "@digital-wealth/api",
   "version": "0.1.0",
   "private": true,
   "description": "NestJS 後端 — 帳務與交易核心",
@@ -31,7 +31,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@fintech/shared": "*",
+    "@digital-wealth/shared": "*",
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
     "@nestjs/jwt": "^11.0.2",

@@ -20,7 +20,7 @@
  */
 
 import { useMutation, useQuery } from '@tanstack/react-query';
-import type { AuthSession, LoginRequest } from '@fintech/shared';
+import type { AuthSession, LoginRequest } from '@digital-wealth/shared';
 
 import { ApiError, apiGet, apiPost } from '../../../shared/lib/api-client';
 import { queryClient, queryKeys } from '../../../shared/lib/query-client';

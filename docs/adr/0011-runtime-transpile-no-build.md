@@ -8,7 +8,7 @@
 
 單元 0.6 要建立 NestJS 骨架時，這個決策撞上了三個限制：
 
-1. **`nest build`（底層是 `tsc`）不會編譯 `rootDir` 之外的檔案。** `shared` 在 `node_modules/@fintech/shared` 的 symlink 底下，編譯直接失敗。
+1. **`nest build`（底層是 `tsc`）不會編譯 `rootDir` 之外的檔案。** `shared` 在 `node_modules/@digital-wealth/shared` 的 symlink 底下，編譯直接失敗。
 2. **NestJS 的依賴注入依賴 `emitDecoratorMetadata`。** 它靠編譯器寫入的 constructor 參數型別資訊，才知道要注入哪個 provider。
 3. **esbuild（也就是 `tsx`）不支援 `emitDecoratorMetadata`。** 用 `tsx` 跑 NestJS 會在啟動時噴 `Nest can't resolve dependencies`。
 

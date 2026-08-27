@@ -20,7 +20,7 @@ import {
   type Cents,
   type Position,
   type PortfolioSnapshot,
-} from '@fintech/shared';
+} from '@digital-wealth/shared';
 
 import { DatabaseService } from '../../database/database.service.js';
 import {

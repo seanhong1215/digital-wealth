@@ -16,7 +16,7 @@ import {
   type AuthenticatedUser,
   type TransactionPage,
   type TransactionQuery,
-} from '@fintech/shared';
+} from '@digital-wealth/shared';
 
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { authRequired } from '../../common/errors/app.error.js';

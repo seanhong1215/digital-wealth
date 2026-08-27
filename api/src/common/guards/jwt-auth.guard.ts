@@ -35,7 +35,7 @@ import { Injectable, type CanActivate, type ExecutionContext } from '@nestjs/com
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 
-import { AUTH_COOKIE_NAME, jwtPayloadSchema } from '@fintech/shared';
+import { AUTH_COOKIE_NAME, jwtPayloadSchema } from '@digital-wealth/shared';
 
 import { authRequired } from '../errors/app.error.js';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator.js';

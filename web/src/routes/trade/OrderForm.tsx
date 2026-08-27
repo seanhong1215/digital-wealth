@@ -28,7 +28,7 @@ import {
   priceLimits,
   tickSize,
   type OrderSideValue,
-} from '@fintech/shared';
+} from '@digital-wealth/shared';
 
 import { useAccount, usePositions } from '../../features/portfolio/api/queries';
 import { useLivePrice, useQuoteSubscription } from '../../features/quotes/api/use-quotes';

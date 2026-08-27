@@ -31,6 +31,8 @@
 
 import { NavLink, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 
+import { APP_NAME } from '@digital-wealth/shared';
+
 import { useSession } from './features/auth/api/session';
 import { LoginPage } from './routes/LoginPage';
 import { PortfolioPage } from './routes/PortfolioPage';
@@ -144,7 +146,9 @@ function TopNav() {
     <header className="sticky top-0 z-10 border-b border-border bg-bg-surface">
       <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-4 py-3">
         <div className="flex items-baseline gap-3">
-          <span className="text-xl font-bold text-navy-900">FinTech</span>
+          {/* 品牌字串一律從 shared 的 APP_NAME 取，不寫死 ——
+              改名時只需要動一個地方。 */}
+          <span className="text-xl font-bold text-navy-900">{APP_NAME}</span>
           <span className="hidden text-sm text-text-secondary sm:inline">數位財富管理</span>
         </div>
 

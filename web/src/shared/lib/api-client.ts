@@ -31,7 +31,7 @@
  *   多一個相依只為了少寫三十行，不划算。
  */
 
-import { type ErrorCode } from '@fintech/shared';
+import { type ErrorCode } from '@digital-wealth/shared';
 
 /** API 前綴。走 Vite 代理，所以是相對路徑（理由見 vite.config.ts）。 */
 const API_BASE = '/api/v1';

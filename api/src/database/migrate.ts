@@ -25,7 +25,7 @@
  *   直接用 pg 連線 —— 因為為了跑 SQL 而啟動整個 DI 容器沒有意義。
  *
  * 執行方式：
- *   npm run migrate -w @fintech/api
+ *   npm run migrate -w @digital-wealth/api
  */
 
 import { readdir, readFile } from 'node:fs/promises';

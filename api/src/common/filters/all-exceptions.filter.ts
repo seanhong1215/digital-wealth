@@ -56,7 +56,7 @@ import {
   ERROR_HTTP_STATUS,
   type ErrorCode,
   type ErrorResponse,
-} from '@fintech/shared';
+} from '@digital-wealth/shared';
 
 import { AppError } from '../errors/app.error.js';
 

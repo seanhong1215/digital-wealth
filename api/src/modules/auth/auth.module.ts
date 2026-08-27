@@ -23,7 +23,7 @@
 import { Global, Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 
-import { AUTH_TOKEN_TTL_SECONDS } from '@fintech/shared';
+import { AUTH_TOKEN_TTL_SECONDS } from '@digital-wealth/shared';
 
 import { env } from '../../config/env.js';
 import { AuthController } from './auth.controller.js';

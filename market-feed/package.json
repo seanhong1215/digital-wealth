@@ -1,5 +1,5 @@
 {
-  "name": "@fintech/market-feed",
+  "name": "@digital-wealth/market-feed",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@fintech/shared": "*",
+    "@digital-wealth/shared": "*",
     "pg": "^8.13.0",
     "redis": "^4.7.0"
   },

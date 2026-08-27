@@ -9,7 +9,7 @@
 
 import { useEffect, useMemo, useSyncExternalStore } from 'react';
 
-import type { Cents } from '@fintech/shared';
+import type { Cents } from '@digital-wealth/shared';
 
 import {
   quoteStore,

@@ -32,7 +32,7 @@ import {
   cents,
   priceLimits,
   type Cents,
-} from '@fintech/shared';
+} from '@digital-wealth/shared';
 
 /** 一檔標的在記憶體中的狀態。 */
 export interface WalkerState {
