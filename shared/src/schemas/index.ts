@@ -13,3 +13,4 @@ export * from './portfolio.js';
 export * from './transaction.js';
 export * from './order.js';
 export * from './quote.js';
+export * from './demo.js';
