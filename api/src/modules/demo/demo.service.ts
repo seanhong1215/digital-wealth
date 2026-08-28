@@ -31,7 +31,7 @@ export class DemoService {
    *
    *   `applySeed()` 會先 `TRUNCATE` 再重新寫入幾千列。這兩件事必須
    *   是**同一個交易**，否則中途失敗（例如連線斷了）會留下一個
-   *   「已清空但還沒寫入」的資料庫 —— 面試官看到的是一個空系統，
+   *   「已清空但還沒寫入」的資料庫 —— 使用者看到的是一個空系統，
    *   而且重新整理也救不回來。
    *
    *   `db.transaction()` 會向連線池借一條連線、下 BEGIN、
@@ -60,7 +60,7 @@ export class DemoService {
   /**
    * 重設：清除故障 ＋ 回到預設情境的資料。
    *
-   * 兩件事都要做。只清故障不重建資料的話，面試官在 `heavy-history`
+   * 兩件事都要做。只清故障不重建資料的話，在 `heavy-history`
    * 情境下按「重設」，畫面仍然是 8,000 筆 —— 那不叫重設。
    */
   async reset(): Promise<DemoState> {

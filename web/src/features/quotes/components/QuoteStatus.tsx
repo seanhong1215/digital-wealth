@@ -14,7 +14,7 @@
  */
 
 import type { QuoteFreshness } from '../api/quote-store';
-import { useFeedStatus, useQuote } from '../api/use-quotes';
+import { useFeedStatus } from '../api/use-quotes';
 
 /**
  * 報價異常的橫幅。一切正常時完全不佔空間。
@@ -78,38 +78,4 @@ export function FreshnessTag({ freshness }: { freshness: QuoteFreshness }) {
       {freshness === 'stale' ? '延遲' : '昨收'}
     </span>
   );
-}
-
-/**
- * 報價跳動時的閃爍。
- *
- * ── 為什麼閃爍只有 150ms、而且只在漲跌時 ★ ──────────────────────
- *
- *   報價跳動的視覺回饋是券商 App 的標準做法，但很容易做過頭：
- *
- *     · 太久（>300ms）→ 幾檔同時在跳，整個列表變成聖誕樹
- *     · 每次都閃（含平盤）→ 沒有資訊量，只是在閃
- *
- *   150ms 剛好是「眼角餘光注意到，但視線回來時已經恢復」的長度。
- *   而且用背景色而不是文字色 —— 文字閃爍會讓數字本身變得難讀，
- *   而使用者要看的正是那個數字。
- *
- *   `prefers-reduced-motion` 的使用者完全不會看到閃爍
- *   （全域 CSS 已把所有 transition 壓到 0.01ms）。
- */
-export function useFlashOnChange(symbol: string): string {
-  const { quote } = useQuote(symbol);
-
-  // 用 receivedAt 當 key：同一個時間戳代表沒有新報價。
-  // 這裡不用 useState + useEffect 是刻意的 —— 那會多一次 render，
-  // 而這個效果純粹是視覺的，交給 CSS animation 就好。
-  if (!quote) return '';
-
-  const isRecent = Date.now() - quote.receivedAt < 150;
-  if (!isRecent) return '';
-
-  const direction = quote.quote.priceCents - quote.quote.prevCloseCents;
-  if (direction === 0) return '';
-
-  return direction > 0 ? 'bg-price-up-bg' : 'bg-price-down-bg';
 }

@@ -1,9 +1,9 @@
 # 05-3 — 下單流程實作規格
 
-> 情境 G 產出｜路由 `/trade/*`｜對應單元 3.4–3.6
+> 路由 `/trade/*`｜實作於 [`web/src/routes/trade/`](../../web/src/routes/trade/)
 > 版本 0.1｜2026-08-13
 
-> **本專案技術含量最高的頁面。** 多步驟表單、樂觀更新、失敗回滾、冪等處理都在這裡。
+> **本專案技術含量最高的流程。** 多步驟表單、冪等鍵、失敗處理、狀態未知的分支都在這裡。
 
 ---
 
@@ -36,7 +36,7 @@
 | **步驟（step）** | **走路由** | 瀏覽器上一頁能回到前一步；每一步可被書籤與分享 |
 | **表單資料** | **只存記憶體，重整就回到步驟 1** | 見下方說明 |
 | **`idempotencyKey`** | 進入步驟 3 時產生，存記憶體 | 見下方說明 |
-| **結果頁** | 獨立路由，帶 `orderId` query | 下單被拒的畫面要能直接分享給面試官看 |
+| **結果頁** | 獨立路由，帶 `orderId` query | 下單被拒的畫面要能用連結直接分享 |
 
 ### 為什麼表單資料不持久化
 
@@ -52,7 +52,7 @@
 | 意圖新鮮度 | 不重要 | **關鍵** —— 舊的下單意圖是危險的 |
 | 誤操作後果 | 看到不對的列表 | **送出不想要的委託** |
 
-> 「為什麼明細篩選要同步 URL，但下單表單不要？」是很好的面試素材。答案是「可分享性」與「意圖新鮮度」的取捨，這比會寫 `useSearchParams` 值錢得多。
+> 「為什麼明細篩選要同步 URL，但下單表單不要？」的答案是「可分享性」與「意圖新鮮度」的取捨。
 
 ### 為什麼 `idempotencyKey` 在步驟 3 產生
 
@@ -134,7 +134,7 @@ const [idempotencyKey] = useState(() => crypto.randomUUID());
 | 送出按鈕 | `Button variant="primary" size="lg"`，全寬，高度 ≥ 52px |
 | 返回 | 次要按鈕「返回修改」 |
 
-> **二次確認是為 55+ 使用者做的，但所有人都受益。** `PROJECT.md` §3 的要求：關鍵操作二次確認。
+> **二次確認是為 55+ 使用者做的，但所有人都受益。** README §3 的要求：關鍵操作二次確認。
 
 > **買賣方向不能只靠顏色區分。** 買進與賣出的後果完全相反，必須用文字明確標示。
 
@@ -150,78 +150,71 @@ const [idempotencyKey] = useState(() => crypto.randomUUID());
 
 > **成功用靛藍不用綠色。** 台股綠 = 跌 = 壞消息，綠色勾勾在使用者的金融直覺裡是矛盾的。見 `04-design-system.md`。
 
-> **逾時分支必須做。** 這是最真實也最容易被忽略的情境 —— 請求送出了但沒收到回應，**委託可能成立也可能沒有**。這時絕對不能說「下單失敗」（可能已經成交了），只能說「狀態未知，請確認」。這個細節會讓面試官眼睛一亮。
+> **逾時分支必須做。** 這是最真實也最容易被忽略的情境 —— 請求送出了但沒收到回應，**委託可能成立也可能沒有**。這時絕對不能說「下單失敗」（可能已經成交了），只能說「狀態未知，請確認」。這個分支平常永遠跑不到，但它是真實系統一定會遇到的情況。
 
 ---
 
-## 樂觀更新與回滾 ★
+## 為什麼是悲觀更新，不是樂觀更新 ★
 
-### 流程
+原規劃走**樂觀更新**：按下送出立刻更新本地快取（現金扣掉、股數增加），
+失敗再用快照回滾。實作時改成**悲觀更新** —— 等後端確認成交，才更新畫面。
 
-```
-使用者按下送出
-      │
-      ▼
-onMutate：立刻更新本地快取
-      ├─ accounts 快取：現金扣掉總計
-      ├─ positions 快取：股數增加
-      └─ 保存「異動前的快照」← 回滾用
-      │
-      ▼
-畫面立刻反映（使用者感覺是瞬間的）
-      │
-      ├─── 成功 ──► onSuccess：用伺服器回傳的權威值覆蓋快取
-      │
-      └─── 失敗 ──► onError：用快照還原快取
-                            │
-                            ▼
-                     導向結果頁「被拒」分支
-```
+### 判準
 
-### 實作要點
+樂觀更新適合**幾乎一定成功**、而且**錯了代價很小**的操作 —— 按讚、加入收藏。
+下單兩個條件都不符合：
 
-```tsx
-useMutation({
-  mutationFn: submitOrder,
+| 條件 | 下單的情況 |
+|---|---|
+| 幾乎一定成功？ | ❌ 有一整排合理的失敗理由：餘額不足、持股不足、超過漲跌停、非法跳動點、標的停止交易 |
+| 錯了代價很小？ | ❌ 「顯示成交了、兩秒後改口說沒成交」在金融場景會讓人直接失去信任 |
 
-  onMutate: async (order) => {
-    // 1. 取消進行中的查詢，避免它們覆蓋我們的樂觀更新
-    await queryClient.cancelQueries({ queryKey: ['account'] });
+代價是使用者要看一到兩秒的「處理中」。換來的是**畫面上的數字永遠是真的**。
 
-    // 2. 保存快照 —— 這是回滾的依據
-    const snapshot = {
-      account: queryClient.getQueryData(['account']),
-      positions: queryClient.getQueryData(['positions']),
-    };
+### 成交後怎麼更新
 
-    // 3. 樂觀更新
-    queryClient.setQueryData(['account'], optimisticAccount);
+不做快取的手動計算，直接讓相關的 query 全部失效重抓：
 
-    return snapshot;  // 傳給 onError
-  },
-
-  onError: (err, order, snapshot) => {
-    // 用快照還原
-    queryClient.setQueryData(['account'], snapshot.account);
-    queryClient.setQueryData(['positions'], snapshot.positions);
-  },
-
-  onSettled: () => {
-    // 無論成敗，最後都跟伺服器對齊一次
-    queryClient.invalidateQueries({ queryKey: ['account'] });
-  },
-});
+```ts
+// web/src/shared/lib/query-client.ts
+export async function invalidateAfterTrade(): Promise<void> {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: queryKeys.account }),
+    queryClient.invalidateQueries({ queryKey: ['portfolio'] }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.positions }),
+    queryClient.invalidateQueries({ queryKey: ['transactions'] }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.session }),
+  ]);
+}
 ```
 
-### 三個容易出錯的地方
+**一筆成交會同時改變五個東西**：現金餘額、投組總覽、持倉、交易明細、session 裡的帳戶快照。
+漏掉任何一個，畫面就會有一塊顯示著舊資料 —— 而在金融介面裡，
+「有一塊數字是舊的」和「數字是錯的」沒有區別。
 
-1. **`onMutate` 必須先 `cancelQueries`** —— 否則一個進行中的 `GET /accounts/me` 回來後會用舊資料覆蓋掉你的樂觀更新。
+把 query key 集中定義（而不是散落各處的字串字面量）就是為了這個：
+拼錯字的後果是**靜默地沒有失效**，不會有任何錯誤訊息。
 
-2. **回滾期間又收到 WebSocket 報價更新** —— 報價更新的是 `quotes` 快取，與 `account`／`positions` 是**不同的 query key**，兩者不會互相干擾。這是 query key 設計正確的好處。
+### 寫入操作絕不自動重試
 
-3. **`DUPLICATE_REQUEST`（409）不算失敗** —— 使用者連點兩次，第二次回 409。這時**不該回滾也不該顯示錯誤** —— 第一次已經成功了。前端要把 409 當成成功處理，顯示原本的結果。
+```ts
+mutations: { retry: false }
+```
 
-> 「技術上的錯誤」不等於「該讓使用者看到的錯誤」。這條值得寫進 README。
+下單逾時的時候，前端**不知道後端到底成立了沒** —— 自動重送可能變成下兩筆。
+冪等鍵確實能防住，但那是**最後防線**，不該當成日常機制來用。
+正確做法是把「狀態未知」如實顯示給使用者，讓他自己決定。
+
+### `DUPLICATE_REQUEST`（409）不算失敗
+
+使用者連點兩次，第二次回 409。這時**不該顯示錯誤** ——
+從他的角度看他只是點了兩下，第一次已經成功了。
+
+實作上顯示一則**中性提示**（不是紅色錯誤），引導他去交易明細確認：
+
+> 這筆委託已經送出過了，重複點擊不會再成立一筆。
+
+> 「技術上的錯誤」不等於「該讓使用者看到的錯誤」。
 
 ---
 
@@ -231,11 +224,11 @@ useMutation({
 |---|---|---|
 | `default` | — | 正常表單 |
 | `loading`（試算） | 數量／價格變動後 | 試算區顯示 `Skeleton`，**送出鈕停用** |
-| `loading`（送出中） | 按下送出 | 按鈕進入 `loading`，**停用並防止重複點擊**；全頁遮罩防止操作 |
+| `loading`（送出中） | 按下送出 | 按鈕進入 `loading` 並**停用**（`disabled` 與文字變更同時發生，避免連點）。沒有全頁遮罩 —— 使用者仍可返回修改 |
 | `empty` | 步驟 1 查無標的 | `EmptyState`「找不到符合的標的」 |
 | `error`（驗證） | 欄位格式或業務規則不符 | 欄位下方紅字 ＋ 送出鈕停用 |
 | `error`（餘額不足） | `INSUFFICIENT_FUNDS` | 紅色提示 ＋ **顯示差額**「尚缺 NT$ 12,000」 |
-| `error`（下單被拒） | `ORDER_REJECTED` | 導向結果頁被拒分支 ＋ 樂觀更新回滾 |
+| `error`（下單被拒） | `ORDER_REJECTED` | 確認頁顯示紅色提示 ＋ 附 traceId；餘額與持倉不變（沒有樂觀更新，也就不需要回滾） |
 | `offline` | WebSocket 斷線 | 橘色橫幅「報價中斷」；**現價欄位標示為舊資料**；仍可下單（限價單不依賴即時報價） |
 
 > **報價中斷時仍可下單。** 這是限價單的特性 —— 使用者自己指定價格，不需要即時報價。但要明確標示現價是舊的，讓使用者知道參考值可能過時。

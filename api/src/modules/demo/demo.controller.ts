@@ -81,7 +81,7 @@ export class DemoController {
     return this.demoState.setFaults(request.faults);
   }
 
-  /** 回到預設情境並清除所有故障。面試官弄亂之後的「還原」按鈕。 */
+  /** 回到預設情境並清除所有故障。試玩弄亂之後的「還原」按鈕。 */
   @Post('reset')
   async reset(): Promise<DemoState> {
     return this.demoService.reset();

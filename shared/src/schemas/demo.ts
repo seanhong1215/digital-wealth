@@ -6,14 +6,14 @@
  *
  * ── Demo 控制台在解決什麼問題 ★ ──────────────────────────────────
  *
- *   作品集的 happy path，面試官三秒就滑過去了。真正會讓他停下來
+ *   happy path 三秒就滑過去了。真正會讓人停下來
  *   提問的是 **error handling** —— 餘額不足長什麼樣、下單逾時
  *   使用者怎麼知道成立了沒、報價斷了畫面會不會整片空白。
  *
  *   但這些狀態平常看不到。沒有控制台的話，你得在旁邊解說
  *   「如果這時候後端掛掉，會顯示…」—— 說跟看到是兩回事。
  *
- *   控制台讓面試官**自己**把這些狀態點出來。這比一個能新增文章的
+ *   控制台讓使用者**自己**把這些狀態點出來。這比一個能新增文章的
  *   後台有用得多，而且成本只有一個 Module ＋ 一個浮動面板。
  *
  * ── 為什麼故障注入放在後端 ★ ─────────────────────────────────────
@@ -84,7 +84,7 @@ export const faultKindSchema = z.enum([
 ]);
 export type FaultKindValue = z.infer<typeof faultKindSchema>;
 
-/** 故障說明。含「開了之後該去哪裡看」—— 面試官不必問就知道怎麼驗。 */
+/** 故障說明。含「開了之後該去哪裡看」—— 不必翻文件就知道怎麼驗。 */
 export const FAULT_LABELS: Record<FaultKindValue, { name: string; hint: string }> = {
   'api-500': { name: '伺服器錯誤', hint: '所有 API 回 500 — 看全頁錯誤與 traceId' },
   'api-timeout': { name: '請求逾時', hint: '連線被中斷不回應 — 看「狀態未知」的處理' },
@@ -113,7 +113,7 @@ export const setScenarioSchema = z.object({
    * 選填。不給就沿用目前的種子。
    *
    * ★ 種子必須是固定的，這是 demo 可信度的關鍵：
-   *   面試官把「餘額不足」的連結貼給同事，同事打開時看到的數字
+   *   把「餘額不足」的連結貼給別人，對方打開時看到的數字
    *   如果跟他不一樣，整個 demo 就變成「隨機產生器」而不是「系統」。
    */
   seed: z.number().int().optional(),
@@ -146,7 +146,7 @@ export type SetFaultsRequest = z.infer<typeof setFaultsSchema>;
  *     · 底線開頭是慣例上的「內部參數」，不會被誤認為業務參數
  *
  *   而放進網址（而不是 localStorage）的理由是**可分享**：
- *   面試官可以把「下單被拒」的情境連結直接貼給同事。
+ *   可以把「下單被拒」的情境連結直接貼給別人。
  */
 export const DEMO_QUERY_PREFIX = '_demo_';
 

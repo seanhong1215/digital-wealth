@@ -32,15 +32,23 @@
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│  api/src/modules/*          業務模組（目前只有 health）│  ← 還沒開始
+│  web/src/routes             頁面                       │
+│  web/src/features/*         功能（api 層 ＋ 元件）      │
+│  web/src/shared/{ui,lib}    無業務邏輯的元件與工具      │
 ├──────────────────────────────────────────────────────┤
-│  api/src/database           連線池、交易、migration    │  ← 單元 0.3–0.5
+│  api/src/modules/*          業務模組（下單、報價、查詢）│
+├──────────────────────────────────────────────────────┤
+│  api/src/database           連線池、交易、migration     │
 │  api/src/redis              Redis 連線                 │
 │  api/src/config             環境變數                   │
 ├──────────────────────────────────────────────────────┤
-│  shared/src                 金額、台股規則             │  ← 單元 0.2
-│                             ★ 前後端共用，最底層       │
+│  shared/src                 契約、金額、台股規則        │
+│  shared/src/simulation      假資料與價格模擬            │
+│                             ★ 三個程序共用，最底層      │
 └──────────────────────────────────────────────────────┘
+
+market-feed 只依賴 shared，不依賴 api —— 兩者的唯一關係是
+「一個 publish 到 Redis、一個 subscribe」。
 ```
 
 **規則：箭頭只能往下。** `shared` 不准依賴 `api`，`database` 不准依賴 `modules`。這條規則讓你可以**從下往上讀**，讀到任何一層時，它依賴的東西你都已經讀過了。
@@ -103,7 +111,7 @@
 
 **問題**：沒有真實市場資料的金融 demo，九成垮在假資料上。
 
-垮的方式很具體：持倉頁顯示「台積電均價 1050 元」，面試官點進明細看到歷史買入都是 1200 上下 —— 對不起來，整個專案的可信度歸零。
+垮的方式很具體：持倉頁顯示「台積電均價 1050 元」，點進明細卻看到歷史買入都是 1200 上下 —— 對不起來，整個 demo 的可信度歸零。
 
 | 順序 | 檔案 | 讀完你該能回答 |
 |---|---|---|
@@ -112,7 +120,7 @@
 | 3 | `api/src/database/seeds/factory.ts` 的檔頭 | 為什麼是「先產生歷史，再推導現況」？ |
 | 4 | `api/src/database/seeds/factory.ts` 的 `buildPriceSeries()` | 為什麼股價要用乘法而不是加法來模擬？ |
 
-**這一站的核心概念**：`factory.ts` 是**純函式**（不碰資料庫），所以可以直接測試「持倉成本真的等於歷史加權平均」。`seed.ts` 才負責寫入。**算什麼 / 寫到哪** 分開 —— 這個模式在 Phase 1 會再出現一次（Service 算、Repository 寫）。
+**這一站的核心概念**：`factory.ts` 是**純函式**（不碰資料庫），所以可以直接測試「持倉成本真的等於歷史加權平均」。`seed.ts` 才負責寫入。**算什麼 / 寫到哪** 分開 —— 這個模式在業務模組裡會再出現一次（Service 算、Repository 寫）。
 
 ---
 
@@ -150,12 +158,12 @@
 | 檔案 | 什麼時候再讀 |
 |---|---|
 | `api/src/config/env.ts` | 設定出問題時 |
-| `api/src/redis/redis.service.ts` | 單元 2.3（WebSocket 報價）|
+| `api/src/redis/redis.service.ts` | 要理解 pub/sub 為什麼要另開連線時 |
 | `api/src/database/migrate.ts` | 要新增 migration 時 |
 | `api/src/database/seeds/seed.ts` | 要改 seed 寫入邏輯時 |
-| `api/Dockerfile`、`docker-entrypoint.sh` | 容器啟動出問題時 |
+| `api/Dockerfile`、`web/nginx.conf`、`docker-entrypoint.sh` | 容器啟動出問題時 |
+| `web/src/mocks/*` | 要改 GitHub Pages 展示版的假資料時 |
 | `vitest.config.ts`、各 `tsconfig.json` | 建置出問題時 |
-| 所有 `.gitkeep` 的空目錄 | 那是後續單元的預留位置，現在是空的 |
 
 ---
 
@@ -207,7 +215,7 @@ FROM portfolio_snapshots ORDER BY snapshot_date DESC LIMIT 10;
 
 ## 學習檢查點
 
-`PROJECT.md` §8 要求每階段末做一次。P0 的檢查點是這七題 —— **答不出來就回頭讀對應的那一站**：
+讀完地基那幾站之後，用這七題自我檢查 —— **答不出來就回頭讀對應的那一站**：
 
 1. 為什麼金額不能用 `number` 直接存？branded type 解決了什麼 `number` 解決不了的問題？（第一站）
 2. 買 1 股 20 元的股票，手續費是多少？為什麼？（第二站）

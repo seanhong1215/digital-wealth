@@ -52,7 +52,7 @@
 2. **深色模式的預留** —— 本專案不做深色模式，但只要重新定義語意層的對應值就能支援。原始層完全不用動
 3. **強制思考用途** —— 寫 `--color-price-up` 會逼你想「這個顏色代表什麼意思」，寫 `--red-600` 則不會
 
-> **「不做深色模式」因此是架構上的延後，而不是做不到。** 這個區別在面試時值得主動說明。
+> **「不做深色模式」因此是架構上的延後，而不是做不到。** 這個區別值得說清楚。
 
 ---
 
@@ -129,7 +129,7 @@
 > | 綠色 | 成功 ✓ | **下跌**（壞消息） | **成功改用靛藍**，綠色專屬於「跌」 |
 > | 紅色 | 錯誤 ✕ | **上漲**（好消息） | **錯誤改用玫瑰紅** `#BE123C`，與漲色 `#DC2626` 區隔 |
 >
-> 如果不處理，下單成功時彈出的綠色勾勾，在使用者的金融直覺裡是「跌」。這個衝突值得在面試中主動提出。
+> 如果不處理，下單成功時彈出的綠色勾勾，在使用者的金融直覺裡是「跌」。
 
 ### 介面色
 
@@ -246,43 +246,40 @@
 
 ---
 
-## 核心元件清單
+## 元件清單
 
-按實作優先序排列。所有元件用 CVA 管理變體。
+實際做出來的都在 [`web/src/shared/ui/index.tsx`](../web/src/shared/ui/index.tsx)。
+放同一個檔案是刻意的 —— 十個小元件拆成十個檔案只會讓人一直在檔案間跳。
+哪個長到超過 80 行、或開始需要自己的測試，再拆出去。
 
-### P0 — Phase 1 必須完成
-
-| 元件 | 用途 | 主要 Variants |
+| 元件 | 用途 | 變體 |
 |---|---|---|
-| **`MoneyText`** | 金額顯示的唯一入口 | `size`: sm/base/lg/xl/2xl｜`showSign`: bool｜`colorBy`: none/sign |
-| **`PriceChange`** | **漲跌三重編碼** | `format`: value/percent/both｜`size`｜`showArrow`: bool |
-| **`Card`** | 內容容器 | `padding`: sm/md/lg｜`variant`: default/subtle |
-| **`Button`** | 動作 | `variant`: primary/secondary/ghost/danger｜`size`: sm/md/lg｜`loading` |
-| **`Skeleton`** | 載入骨架 | `variant`: text/number/block/row |
-| **`EmptyState`** | 空資料 | `icon`｜`title`｜`description`｜`action` |
-| **`ErrorState`** | 錯誤 ＋ 重試 | `scope`: block/page｜`onRetry`｜`traceId` |
+| **`MoneyText`** | 金額顯示的唯一入口 | `size`: base/lg/xl/3xl/4xl｜`signed`｜`colored` |
+| **`PriceChange`** | **漲跌三重編碼**（顏色＋箭頭＋正負號） | `size`｜可選帶百分比 |
+| `Card` | 內容容器 | `padded` |
+| `SectionTitle` | 區塊標題 ＋ 右側動作 | — |
+| `Button` | 動作 | `variant`: primary/secondary/ghost/danger｜`fullWidth`｜`loading` |
+| `Field` | 表單欄位 ＋ 錯誤 ＋ 提示 | `error`｜`hint` |
+| `Badge` | 狀態標籤 | `tone`: neutral/up/down/success/error |
+| `Skeleton` | 載入骨架 | 用 `className` 指定尺寸 |
+| `EmptyState` | 空資料 | `title`｜`hint` |
+| `ErrorState` | 錯誤 ＋ 重試 ＋ traceId | `onRetry` |
 
-**`MoneyText` 與 `PriceChange` 是最重要的兩個元件** —— 所有金額與漲跌一律經過它們，禁止在頁面裡直接寫 `<span>{amount}</span>`。這是「金額運算集中於單一入口」原則在呈現層的延伸。
+**`MoneyText` 與 `PriceChange` 是最重要的兩個** —— 所有金額與漲跌一律經過它們，
+禁止在頁面裡直接寫 `<span>{amount}</span>`。這是「金額運算集中於單一入口」原則在呈現層的延伸。
+包成元件的實際好處是：等寬數字（`tabular-nums`）與最低字重不會有人忘記。
 
-### P1 — Phase 2–3
+### 沒有做成共用元件的
 
-| 元件 | 用途 | 主要 Variants |
-|---|---|---|
-| `Badge` | 狀態標籤 | `variant`: neutral/success/warning/error |
-| `QuoteFreshnessIndicator` | 報價新鮮度 | `state`: live/stale/disconnected |
-| `Field` | 表單欄位 ＋ 錯誤 | `error`｜`hint`｜`required` |
-| `NumberInput` | 股數／價格輸入 | `step`｜`min`/`max`｜`suffix` |
-| `StepIndicator` | 下單步驟 | `steps`｜`current` |
-| `Dialog` | **二次確認** | `variant`: default/danger |
-| `BottomNav` / `SideNav` | 導覽（響應式切換） | — |
-
-### P2 — Phase 4
-
-| 元件 | 用途 |
+| 原本規劃 | 為什麼沒做 |
 |---|---|
-| `Drawer` | Demo 控制台側邊抽屜 |
-| `Toast` | 操作回饋 |
-| `Banner` | 全域提示（報價中斷） |
+| `NumberInput` | `Field` 加上 `type="number"` 與 `step` 就夠。多包一層只是轉發 props |
+| `StepIndicator` | 下單四步的進度由網址表達（`/trade/2330/confirm`），畫一排圓點是重複資訊 |
+| `Dialog` | 二次確認做成了**獨立的確認頁**而不是彈窗 —— 手機上的彈窗要處理捲動鎖定與返回鍵，而獨立路由天然就有這兩個行為 |
+| `Toast` | 目前沒有「需要通知但不打斷」的情境。成功走結果頁、失敗顯示在原地 |
+| `Drawer` | Demo 控制台做成浮動面板，不需要抽屜的滑入動畫與遮罩 |
+| `QuoteFreshnessIndicator` | 實際做成兩個更小的東西：`FreshnessTag`（掛在數字旁）與 `QuoteFeedBanner`（整個報價源掛掉時的橫幅）。兩者的觸發條件不同，合成一個元件反而要傳一堆判斷條件 |
+| `BottomNav` / `SideNav` | 導覽只有三個項目，直接寫在 `App.tsx` 的版面外殼裡。抽成元件只有一個使用者 |
 
 ---
 
@@ -291,13 +288,13 @@
 ### `PriceChange` — 三重編碼
 
 ```tsx
-<PriceChange
-  currentCents={108500}
-  baseCents={107000}
-  format="both"
-/>
-// 輸出：▲ +15.00 (+1.40%)   紅色
+<PriceChange valueCents={1500} ratio={0.014} size="lg" />
+// 輸出：▲ +1,500 (+1.40%)   紅色
 ```
+
+漲跌**金額**由呼叫端算好傳入（而不是傳現價與基準價讓元件自己減）——
+因為「基準」在不同畫面是不同的東西：持倉列表比的是成本，
+報價比的是昨收。元件不該猜。
 
 | 狀態 | 顏色 | 符號 | 正負號 |
 |---|---|---|---|
@@ -314,18 +311,17 @@
 - 字重 ≥ `--weight-medium`（500）
 - `null` → `—`，`0` → `NT$ 0`
 
-### 報價跳動閃爍
+### 報價跳動閃爍 — 沒有做
 
-報價更新時，該欄位背景閃對應漲跌色，`--duration-fast`（150ms）淡出。
+原規劃在報價更新時讓欄位背景閃一下對應的漲跌色。**最後沒有實作。**
 
-```css
-@keyframes flash-up {
-  from { background-color: var(--color-price-up-bg); }
-  to   { background-color: transparent; }
-}
-```
+理由是它與現有的更新機制衝突：報價走 `useSyncExternalStore`，
+每檔標的只在自己有新報價時重繪一次。要做閃爍就得再引入一個
+「150ms 後把樣式清掉」的計時器，等於為了視覺效果多一次 render ——
+而畫面上同時有 11 檔在跳的時候，那是每秒十幾次額外渲染。
 
-> 成本極低但效果顯著 —— demo 影片裡會非常「像真的」。
+`--color-price-up-bg` / `--color-price-down-bg` 兩個 token 仍然保留，
+它們用在下單頁的買賣切換鈕上。
 
 ---
 
@@ -337,7 +333,7 @@
 |---|---|---|
 | CSS 變數（原始層） | `--{色名}-{階}` | `--navy-900` |
 | CSS 變數（語意層） | `--color-{用途}` / `--{類別}-{名}` | `--color-price-up`、`--space-4` |
-| 元件檔名 | PascalCase | `PriceChange.tsx` |
+| 元件檔名 | PascalCase；共用的小元件集中在 `shared/ui/index.tsx` | `TransactionList.tsx` |
 | 元件 props | camelCase，布林用 `is`/`show`/`has` 前綴 | `showArrow` |
 | CVA variant 值 | kebab-case 或單字 | `variant: 'primary'` |
 
@@ -347,18 +343,25 @@
 2. **金額一律經 `MoneyText`**，漲跌一律經 `PriceChange`
 3. **禁止硬編色碼** —— 任何 `#` 開頭的顏色只能出現在 token 定義檔
 4. **禁止硬編間距** —— 用 `--space-*`，不寫 `margin: 13px`
-5. **買賣不使用漲跌色** —— 漲跌色專屬於價格變動（見 `03-presentation.md`）
+5. **買賣切換鈕是漲跌色的唯一例外** —— 買進用漲色紅、賣出用跌色綠。
+
+   這與「漲跌色專屬於價格變動」的原則有張力，但台股券商 App 一律是這個配色，
+   而使用者的肌肉記憶比內部一致性重要。除了這一處，漲跌色不出現在任何
+   非價格的元素上。
 
 ### Token 定義檔位置
 
-```
-web/shared/tokens/
-├── primitive.css    # 原始層：色階、字級、間距
-├── semantic.css     # 語意層：用途對應
-└── index.css        # 匯入 + Tailwind 對接
+全部在 [`web/src/index.css`](../web/src/index.css) 的 `@theme` 區塊裡，一個檔案。
+
+原規劃拆成 `primitive.css` / `semantic.css` / `index.css` 三份。改用 Tailwind v4 之後
+不需要了 —— v4 的 `@theme` 會直接把 CSS 變數變成工具類別：
+
+```css
+--color-price-up: #DC2626;   →   text-price-up  bg-price-up  border-price-up
 ```
 
-Tailwind 設定透過 `theme.extend` 引用 CSS 變數，讓 `bg-surface`、`text-price-up` 這類 class 可用。
+定義與使用在同一個語言裡，不必再維護一份 JS 設定檔去對應。
+原始層與語意層仍然分開，只是用註解分區而不是分檔。
 
 ---
 

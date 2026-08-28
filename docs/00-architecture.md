@@ -1,31 +1,29 @@
 # 00 — 系統架構
 
-> 情境 A（內部開發需求分析）產出｜全端作品集總綱
-> 版本 0.1｜2026-08-13｜維護者：Shawn Ben
+> 版本 0.2｜2026-08-27
 
 ---
 
-## 需求確認
-
-### 已確認
+## 系統概觀
 
 | 項目 | 內容 |
 |---|---|
-| 專案性質 | **全端作品集**，虛構金融品牌 **Shawn 財富** 的數位財富管理前台 |
-| 使用者 | 25–45 歲上班族散戶（手機為主）｜55+（字級與辨識）｜**技術主管（真正的評估者）** |
+| 性質 | 技術示範。虛構金融品牌 **Shawn 財富** 的數位財富管理前台 ＋ 帳務交易核心 |
+| 使用者 | 25–45 歲上班族散戶（手機為主）｜55 歲以上（字級與辨識） |
 | 裝置 | **Mobile-first**，桌機為放大版 |
-| 後端 | **真實後端**（NestJS + PostgreSQL + Redis + WebSocket） |
-| 部署 | **僅本機 Docker Compose**，不做雲端部署 |
-| 時程 | MVP 為主，保留學習時間；分 31 個單元逐一確認 |
-| 學習模式 | 每個單元做完即停、導讀、確認理解才前進 |
+| 前端 | React 19 + Vite + TanStack Query + Tailwind v4 |
+| 後端 | NestJS + PostgreSQL 16 + Redis 7 + 原生 WebSocket |
+| 部署 | 後端本機 Docker Compose；前端另外靜態託管於 GitHub Pages（[ADR 0004](adr/0004-local-only-no-cloud-deploy.md)） |
 
-### 仍需釐清
+### 兩種展示的界線
 
-| 疑問 | 影響 | 何時要決定 |
+| | 內容 | 演不出來的 |
 |---|---|---|
-| 品牌名稱 | 全站文案與 README。`Tidal Wealth` 撞名高知名度音樂串流品牌，建議更換 | 單元 1.3（Design token）前 |
-| 下單流程的 URL 策略 | step 走路由 vs 全存記憶體 | 單元 3.4 前 |
-| 是否保留配置圓餅圖 | 走勢曲線已展示圖表能力，圓餅屬重複訊號 | 單元 1.7 時 |
+| **本機**（`docker compose up`） | 完整全端 | — |
+| **GitHub Pages**（靜態） | 前端 UI，資料由瀏覽器的 MSW 提供 | **並行競態**（`SELECT … FOR UPDATE`）—— 瀏覽器 JS 單執行緒，不可能有兩個請求同時讀到舊餘額 |
+
+靜態版的假資料由 `shared/simulation` 產生，與真實後端 seed 同一份規則、同一顆種子，
+所以兩邊的數字完全一致。
 
 ---
 
@@ -60,7 +58,7 @@
 | 決策 | 選擇 | 替代方案與捨棄理由 |
 |---|---|---|
 | 服務切分 | **模組化單體 + 一個獨立 feed 服務** | 真微服務（每模組獨立部署）在單人專案是純負擔 —— 需要服務發現、分散式追蹤、跨服務交易。做了也答不出「為什麼要拆」 |
-| `market-feed` 為何獨立 | **報價與業務邏輯的生命週期不同** | 併進 `api` 也能跑，但那樣 Redis pub/sub 就沒有存在理由，Redis 會退化成「為了寫在履歷上」。拆開後「行情源 → 訊息匯流排 → 連線扇出」是真實交易系統的標準形狀 |
+| `market-feed` 為何獨立 | **報價與業務邏輯的生命週期不同** | 併進 `api` 也能跑，但那樣 Redis pub/sub 就沒有存在理由，Redis 會退化成一個沒有職責的元件。拆開後「行情源 → 訊息匯流排 → 連線扇出」是真實交易系統的標準形狀 |
 | 前後端關係 | **前後端分離**，契約放 `shared/` | SSR 整合（Next.js）在此屬過度工程 —— 沒有 SEO 需求，且會模糊「前端架構能力」這個訊號 |
 | 儲存庫結構 | **Monorepo** | 多 repo 會讓 `shared/` 契約共用變成 npm 私有套件的維運問題，成本遠大於效益 |
 
@@ -75,48 +73,52 @@
 ## 模組拆解
 
 ```
-FinTech/                       ← repo 根目錄（品牌名與目錄名刻意分開）
+digital-wealth/
 │
 ├── shared/                    ★ 前後端共用契約，唯一的型別來源
-│   ├── schemas/               zod schema（帳戶、持倉、委託、報價⋯）
-│   ├── money.ts               金額運算的唯一入口
-│   └── errors.ts              錯誤碼列舉，前後端共用
+│   ├── schemas/               zod schema：auth｜portfolio｜transaction｜order｜quote｜demo
+│   ├── money.ts               金額運算的唯一入口（branded type Cents）
+│   ├── market-rules.ts        台股規則：跳動單位、手續費、漲跌停
+│   ├── errors.ts              錯誤碼列舉，前後端共用
+│   └── simulation/            ★ 假資料規則。seed、market-feed、瀏覽器 mock 三邊共用
+│       ├── factory.ts         種子資料：先產生明細，再推導持倉與快照
+│       ├── walker.ts          價格隨機漫步（對齊跳動點、夾在漲跌停內）
+│       ├── rng.ts             決定性亂數
+│       └── instruments.ts     20 檔標的的基本資料
 │
 ├── web/                       React 19 + Vite
 │   ├── features/              ★ 依功能切，不依技術切
-│   │   ├── auth/              登入、token 保存
-│   │   ├── portfolio/         總覽卡片 + 走勢曲線 + 持倉列表
-│   │   │   ├── api/           ← 唯一與後端對話的層
-│   │   │   ├── components/
-│   │   │   └── types.ts
-│   │   ├── transactions/      明細、篩選、虛擬滾動
-│   │   ├── trading/           多步驟下單、樂觀更新、回滾
-│   │   └── demo/              Demo 控制台側邊抽屜
-│   └── shared/
-│       ├── ui/                無業務邏輯的元件
-│       ├── lib/               格式化、hooks
-│       └── tokens/            Design token
+│   │   ├── auth/api/          登入、session
+│   │   ├── portfolio/api/     總覽、快照、持倉
+│   │   ├── transactions/      明細（api + 虛擬滾動元件）
+│   │   ├── trading/api/       下單與試算
+│   │   ├── quotes/            即時報價 store（WebSocket）與降級顯示
+│   │   └── demo/              Demo 控制台面板
+│   ├── routes/                頁面：登入｜總覽｜明細｜下單四步
+│   ├── shared/{ui,lib}        無業務邏輯的元件、格式化、API 客戶端
+│   └── mocks/                 MSW 假後端（只有測試與靜態版會載入）
 │
 ├── api/                       NestJS
 │   ├── modules/               ★ 一個業務領域一個 Module
 │   │   ├── auth/              JWT 簽發與驗證
-│   │   ├── accounts/          帳戶、餘額
-│   │   ├── instruments/       標的基本資料
-│   │   ├── positions/         持倉、成本、未實現損益
+│   │   ├── accounts/          帳戶餘額
+│   │   ├── instruments/       標的基本資料與搜尋
+│   │   ├── portfolio/         總覽聚合、快照、持倉
+│   │   ├── positions/         持倉列表（與 portfolio 共用 Service）
 │   │   ├── transactions/      明細查詢、cursor 分頁
 │   │   ├── orders/            ★ 下單：transaction + 行鎖 + 冪等
-│   │   ├── quotes/            WebSocket Gateway、Redis 訂閱、扇出
-│   │   └── demo/              故障注入端點與 middleware
-│   └── common/
-│       ├── filters/           Exception Filter（統一錯誤格式）
-│       ├── guards/            JWT Guard
-│       ├── interceptors/      日誌、回應包裝
-│       └── database/          連線、migration、seed
+│   │   ├── quotes/            WebSocket Gateway、Redis 訂閱、依訂閱扇出
+│   │   ├── demo/              情境切換與故障注入（動態模組，正式環境不註冊）
+│   │   └── health/            健康檢查（給 Docker 用）
+│   ├── common/                Exception Filter｜JWT Guard｜zod 驗證管道
+│   ├── database/              連線池、交易封裝、migration、seed 寫入
+│   └── redis/                 連線管理
 │
-├── market-feed/               報價產生器 → Redis publish
+├── market-feed/               報價產生器 → Redis publish（可單獨關掉以演示降級）
 │
 ├── docs/                      本目錄
-└── docker-compose.yml
+├── .github/workflows/         GitHub Pages 部署
+└── docker-compose.yml         postgres｜redis｜api｜market-feed｜web
 ```
 
 ### 硬性分層規則
@@ -151,29 +153,35 @@ FinTech/                       ← repo 根目錄（品牌名與目錄名刻意�
 
 | 領域 | 選擇 | 為什麼不用替代方案 |
 |---|---|---|
-| 前端框架 | React 19 + TypeScript `strict` | 求職主力技術 |
+| 前端框架 | React 19 + TypeScript `strict` | 生態成熟，型別能與後端共用 |
 | 前端建置 | Vite | 不需 SSR，Next.js 屬過度工程 |
-| Server state | TanStack Query | 快取、重試、樂觀更新皆內建。自己用 `useEffect` 寫等於重造一個不完整的輪子 |
-| Client state | Zustand | 僅用於 UI 與 Demo 控制台。**不與 server state 混用** —— 混用是 Redux 時代最大的痛 |
-| 長列表 | TanStack Virtual | 3,000 筆全渲染會讓手機卡死 |
+| Server state | TanStack Query | 快取、重試、失效皆內建。自己用 `useEffect` 寫等於重造一個不完整的輪子 |
+| 即時報價狀態 | 外部 store + `useSyncExternalStore` | 報價是伺服器主動推送，塞進 Query 只是借用它的儲存空間；放 Context 則每筆報價都會讓整棵樹重繪 |
+| 長列表 | TanStack Virtual | 8,000 筆全渲染約 8 萬個 DOM 節點，首次渲染會卡住主執行緒 |
 | 圖表 | Recharts | 需求是資產曲線，非專業 K 線。用 D3 是殺雞用牛刀 |
-| 樣式 | Tailwind + CVA | Token 驅動、變體集中管理。CSS-in-JS 有執行期成本 |
+| 樣式 | Tailwind v4 `@theme` | token 的定義與使用在同一個語言裡。CSS-in-JS 有執行期成本 |
 | **後端框架** | **NestJS + TypeScript** | 見下方專節 |
 | 資料庫 | PostgreSQL | 下單需要 ACID 交易與行鎖。MongoDB 在金額場景的交易保證不足 |
+| 資料存取 | 原生 SQL | 行鎖與 cursor 分頁在 ORM 底下都要繞回原生 SQL（[ADR 0010](adr/0010-raw-sql-over-orm.md)） |
 | 快取／訊息 | Redis | 兩個真工作，見下方專節 |
-| 即時通訊 | WebSocket | SSE 是單向的，未來要送下單回報就不夠；輪詢在報價場景延遲不可接受 |
+| 即時通訊 | 原生 WebSocket（`ws`） | SSE 是單向的，無法讓前端說「我在看哪幾檔」；socket.io 不是標準 WS，瀏覽器連不上，前端得多裝一個 client |
 | 契約／驗證 | zod（放 `shared/`） | 型別與執行期驗證單一來源。用 class-validator 就無法與前端共用 |
-| 表單 | react-hook-form + zodResolver | 多步驟下單需要 field-level 控制 |
 | 打包 | Docker Compose | 一行啟動全套；無雲端成本、無到期風險 |
-| 測試 | Vitest + Testing Library；MSW 供前端測試 | 「MSW 跑測試、真後端跑運行」證明前端未與後端耦合死 |
+| 測試 | Vitest | 覆蓋核心規則的不變式（金額、台股規則、種子資料自洽性、價格漫步） |
+| Mock | MSW | 跑前端測試，也驅動 GitHub Pages 的靜態展示版 |
+
+> **沒有採用 Zustand 與 react-hook-form。** 原規劃兩者都要用，實作時發現用不上：
+> 全域 UI 狀態只有 Demo 控制台的開合（一個 `useState` 就夠），
+> 而下單表單只有兩個欄位，`useState` 加上 `shared/market-rules` 的驗證比引入表單函式庫更短。
+> 需求沒出現就不預先引入。
 
 ### 為什麼是 NestJS 而不是 Spring Boot / Express
 
-1. **型別共用是全端定位的核心訊號。** zod schema 在 `shared/`，兩邊都從它推導。用 Java 做不到這件事，作品集會退化成「兩個獨立專案放同一個 repo」。
+1. **型別共用。** zod schema 在 `shared/`，兩邊都從它推導 —— 改一個欄位，前後端同時編譯失敗。用 Java 做不到這件事，契約會變成兩份。
 2. **架構觀念與 Spring Boot 一對一。** DI 容器、Module、Guard（≈ Filter）、Pipe（≈ 參數驗證）、Interceptor、Exception Filter。學 NestJS 等於同時累積 Spring 心智模型。
 3. **不用 Express** —— Express 什麼都要自己拼，學不到「框架為什麼這樣分層」。NestJS 的結構夠明確，值得逐層讀懂。
 
-**唯一該改用 Java + Spring Boot 的條件**：求職目標明確為傳統金融機構本體（銀行／券商 IT 部門）。
+**該改用 Java + Spring Boot 的條件**：團隊既有技術棧是 Java（多數傳統金融機構的 IT 部門）。與既有系統一致的價值，壓過型別共用的優勢。
 
 ### Redis 的兩個工作
 
@@ -182,28 +190,30 @@ FinTech/                       ← repo 根目錄（品牌名與目錄名刻意�
 | 報價 pub/sub 扇出 | `market-feed` publish → `api` 訂閱 → 廣播給所有 WS 連線 | 真實交易系統的標準做法；讓多分頁看到同一份報價 |
 | 下單冪等鍵 | `SET idem:{key} NX EX 300` | 使用者連點兩次「確認下單」必須擋掉。券商系統一定要處理 |
 
-**沒有這兩個理由就該砍掉 Redis。** 面試官問「為什麼需要 Redis」時答不出來，比不用還扣分。
+**沒有這兩個理由就該砍掉 Redis。** 引入一個沒有明確職責的元件，換來的只是多一份維運成本。
 
 ---
 
-## 開發優先順序
+## 實作狀態
 
-對應 31 個實作單元（詳見計畫檔的單元清單）。
+| 區塊 | 內容 | 狀態 |
+|---|---|---|
+| 專案地基 | Docker Compose、schema（7 張表）、migration、seed、金額型別 | ✅ |
+| 讀取路徑 | 帳戶／持倉／明細／標的 API、總覽頁、明細頁、虛擬滾動 | ✅ |
+| 寫入路徑 | 下單：transaction + 行鎖 + 冪等鍵 | ✅ |
+| 即時路徑 | market-feed、Redis pub/sub、WS Gateway、重連與降級 | ✅ |
+| 錯誤契約 | 統一錯誤碼、Exception Filter、前端降級 UI | ✅ |
+| 最小認證 | 單一 demo 帳號 + JWT + Guard | ✅ |
+| Demo 控制台 | 後端故障注入 middleware + 前端浮動面板 | ✅ |
+| 交付物 | README、demo 影片、截圖、GitHub Pages 部署 | ✅ |
 
-| 優先級 | 功能 | 說明 | 複雜度 | 單元 |
-|---|---|---|---|---|
-| **P0** | 專案地基 | Docker Compose、schema、migration、seed、金額型別 | 中 | 0.1–0.6 |
-| **P0** | 讀取路徑 | 帳戶／持倉／明細 API + 總覽頁 + 虛擬滾動 | 中 | 1.1–1.10 |
-| **P0** | 寫入路徑 | 下單：transaction + 行鎖 + 冪等 + 樂觀更新回滾 | **高** | 3.1–3.6 |
-| **P0** | 錯誤契約 | 統一錯誤碼、Exception Filter、前端降級 UI | 中 | 4.1–4.2 |
-| **P1** | 即時路徑 | market-feed、Redis pub/sub、WS Gateway、重連降級 | **高** | 2.1–2.5 |
-| **P1** | 最小認證 | 單一 demo 帳號 + JWT + Guard | 低 | 併入 1.1 |
-| **P1** | Demo 控制台 | 後端故障注入 middleware + 前端抽屜 | 中 | 4.3 |
-| **P2** | 交付物 | README、demo 影片、截圖、docs 落檔 | 低 | 4.4 |
-| **P2** | 資產走勢曲線 | Recharts + 快照表 | 低 | 1.7 |
-| **P2** | 配置圓餅圖 | **可砍** —— 與走勢曲線屬重複訊號 | 低 | — |
+### 刻意沒做的
 
-**砍功能時由 P2 往上砍，且每砍一項都要在 README 寫明理由。** 砍掉的東西也是作品的一部分。
+| 項目 | 理由 |
+|---|---|
+| 配置圓餅圖 | 與資產走勢曲線屬重複訊號，兩個圖表講同一件事 |
+| 樂觀更新與回滾 | 下單走**悲觀更新** —— 它有一整排合理的失敗理由，而「顯示成交了、兩秒後改口」在金融場景會讓人失去信任。詳見 `web/src/features/trading/api/queries.ts` |
+| 前端 code splitting | bundle 約 770KB（gzip 231KB），Recharts 佔大宗。以本機與靜態託管的情境，還沒到需要優化的量級 |
 
 ---
 
@@ -253,7 +263,7 @@ type Cents = number & { readonly __brand: 'Cents' };
 
 4. **資料庫欄位型別**：金額用 `BIGINT`（分）；**股數也用 `BIGINT`**
 
-   > **修正（2026-08-15，單元 0.3）**：本項原寫「零股數量用 `NUMERIC(18,4)`」，
+   > **修正（2026-08-15）**：本項原寫「零股數量用 `NUMERIC(18,4)`」，
    > 已被 [`adr/0005`](adr/0005-money-as-bigint-cents.md) 與
    > [`02-backend.md`](02-backend.md) 的 `positions` 表推翻。
    > 理由：**台股零股交易的最小單位是 1 股（整數），不存在 0.5 股。**
@@ -283,7 +293,7 @@ type Cents = number & { readonly __brand: 'Cents' };
 
 ## 相關文件
 
-- `PROJECT.md` — 專案定位與目標排序（總綱）
+- [根目錄 README](../README.md) — 專案定位、技術決策、功能範圍
 - `docs/01-proposal.md` — 提案與 Sitemap
 - `docs/02-backend.md` — 資料庫 schema、API 契約、WebSocket 協定
 - `docs/03-presentation.md` — 資料呈現層規範

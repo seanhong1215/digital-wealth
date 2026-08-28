@@ -4,9 +4,9 @@
 
 ## 背景
 
-`shared/package.json` 的 `exports` 直接指向未編譯的 TypeScript 原始碼（`./src/index.ts`），而不是編譯後的 `dist`。這是單元 0.2a 的既有決策，好處是改了 `shared` 的程式碼，`web` 與 `api` 立刻就看得到，不需要先 build 一次。
+`shared/package.json` 的 `exports` 直接指向未編譯的 TypeScript 原始碼（`./src/index.ts`），而不是編譯後的 `dist`。好處是改了 `shared` 的程式碼，`web` 與 `api` 立刻就看得到，不需要先 build 一次。
 
-單元 0.6 要建立 NestJS 骨架時，這個決策撞上了三個限制：
+建立 NestJS 骨架時，這個決策撞上了三個限制：
 
 1. **`nest build`（底層是 `tsc`）不會編譯 `rootDir` 之外的檔案。** `shared` 在 `node_modules/@digital-wealth/shared` 的 symlink 底下，編譯直接失敗。
 2. **NestJS 的依賴注入依賴 `emitDecoratorMetadata`。** 它靠編譯器寫入的 constructor 參數型別資訊，才知道要注入哪個 provider。
@@ -28,7 +28,7 @@ node --import @swc-node/register/esm-register src/main.ts
 
 | 方案 | 捨棄理由 |
 |---|---|
-| **`nest build` + shared 也編譯成 dist** | 要改 `shared` 的 exports 指向 `dist`，等於推翻單元 0.2a 的決策，並讓改 shared 後必須先 build 才看得到效果 |
+| **`nest build` + shared 也編譯成 dist** | 要改 `shared` 的 exports 指向 `dist`，等於推翻上述決策，並讓改 shared 後必須先 build 才看得到效果 |
 | **`tsx`** | 不支援 `emitDecoratorMetadata`，NestJS 的 DI 會壞掉。除非每個注入點都手寫 `@Inject(TOKEN)` —— 那是把框架的優點丟掉 |
 | **`ts-node`** | 可行，但比 SWC 慢一個量級（`ts-node` 走完整 tsc 型別檢查），watch 模式的重啟延遲很有感 |
 | **shared 用條件式 exports**（開發指 `src`、正式指 `dist`） | 技術上可行，但等於維護兩條路徑，且「開發跟正式跑的不是同一份程式碼」正是 Docker 化想避免的問題 |

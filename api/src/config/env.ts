@@ -152,7 +152,7 @@ export const isProduction = env.nodeEnv === 'production';
  *     正式環境（預設）      → 關
  *
  *   第二條看起來像在開後門，但它是必要的：本專案的「正式環境」
- *   就是面試官本機跑的那份 Docker Compose，而控制台正是要給他用的。
+ *   就是使用者本機跑的那份 Docker Compose，而控制台正是要給他用的。
  *   沒有這個開關，一旦有人把 NODE_ENV 設成 production，
  *   整個 demo 的價值就消失了。
  *

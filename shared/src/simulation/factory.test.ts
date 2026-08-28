@@ -5,7 +5,7 @@
  *   **不是**「資料有沒有產生出來」，而是「產生出來的資料互相對得上嗎」。
  *
  * 為什麼這是本專案最有價值的測試之一：
- *   假資料的破綻不會讓程式當掉，只會讓面試官在心算之後皺眉。
+ *   假資料的破綻不會讓程式當掉，只會讓人在心算之後皺眉。
  *   而破綻的形式很固定，就是下面這幾條「應該恆成立」的關係：
  *
  *     1. 每一筆流水的結餘 = 前一筆結餘 + 這筆金額
@@ -14,7 +14,7 @@
  *     4. 快照的總資產 = 當天現金 + 當天持股市值
  *
  *   把這些關係寫成測試之後，任何破壞自洽性的改動都會立刻被抓到 ——
- *   而不是等到 demo 當天被面試官抓到。
+ *   而不是等到實際操作時才發現。
  *
  * ── 測試為什麼要傳入固定的 today ────────────────────────────────────
  *
@@ -102,7 +102,7 @@ describe('buildSeedData() — 持倉與明細對得上', () => {
    * 從交易明細獨立重算持倉。
    *
    * 刻意**不看** `data.positions`，完全從 transactions 重建。
-   * 這模擬的正是面試官的動作：打開明細，自己加一遍，看跟持倉頁對不對。
+   * 這模擬的正是使用者會做的事：打開明細，自己加一遍，看跟持倉頁對不對。
    */
   function rebuildPositionsFromTransactions(
     transactions: readonly SeedTransaction[],
@@ -150,7 +150,7 @@ describe('buildSeedData() — 持倉與明細對得上', () => {
   });
 
   it('★★ 持倉的平均成本，等於由明細重算出來的加權平均', () => {
-    // 這是整個 demo 可信度的核心。面試官如果心算發現這裡對不上，
+    // 這是整個 demo 可信度的核心。如果有人心算發現這裡對不上，
     // 整個專案的可信度就崩了。
     const rebuilt = rebuildPositionsFromTransactions(data.transactions);
 
@@ -170,7 +170,7 @@ describe('buildSeedData() — 持倉與明細對得上', () => {
 
   it('所有成交價都落在合法的跳動點上', () => {
     // 掛在非跳動點的價格，真實券商會直接退件 ——
-    // 明細裡出現這種價格，懂台股的面試官一眼就會看出來。
+    // 明細裡出現這種價格，熟悉台股的人一眼就會看出來。
     for (const tx of data.transactions) {
       if (tx.priceCents === null || (tx.type !== 'BUY' && tx.type !== 'SELL')) continue;
       expect(isValidTick(tx.priceCents), `${tx.description} 的價格不在跳動點上`).toBe(true);

@@ -193,6 +193,6 @@ export const AUTH_COOKIE_NAME = 'access_token';
  *   （輪替、撤銷清單、竊取偵測）的複雜度遠超過它在本專案的價值。
  *
  *   **README 要寫明這是刻意的取捨**，而不是不知道有這東西 ——
- *   這個區別在面試時很重要。
+ *   這個區別值得想清楚。
  */
 export const AUTH_TOKEN_TTL_SECONDS = 24 * 60 * 60;

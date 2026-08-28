@@ -300,7 +300,7 @@ export class QuotesGateway implements OnGatewayConnection, OnGatewayDisconnect {
    */
   private onQuote(raw: string): void {
     // 故障可能是在連線**建立之後**才被打開的。這時既有的連線還活著，
-    // 所以除了拒絕新連線，也要停止推送 —— 否則面試官打開故障之後
+    // 所以除了拒絕新連線，也要停止推送 —— 否則打開故障之後
     // 數字照跳，什麼都沒發生。
     if (this.demoState.hasFault('quote-disconnect')) return;
 

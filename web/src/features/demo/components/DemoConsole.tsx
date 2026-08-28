@@ -14,7 +14,7 @@
  * ── 視覺上刻意跟產品不一樣 ★ ─────────────────────────────────────
  *
  *   面板用深色、等寬字、方角。這不是偷懶，是要讓人一眼看出
- *   「這個東西不屬於產品本身」—— 面試官不會誤以為正式的財富管理
+ *   「這個東西不屬於產品本身」—— 不會有人誤以為正式的財富管理
  *   App 裡面有一顆「讓所有 API 回 500」的按鈕。
  *
  *   同理，它也不使用產品的 design token（`bg-bg-surface` 那些），
@@ -48,7 +48,7 @@ export function DemoConsole() {
 
   // ── 進站時，把網址上的設定套用到後端 ★ ────────────────────────
   //
-  //   這是「情境連結可分享」的實作：面試官把
+  //   這是「情境連結可分享」的實作：可以把
   //   `?_demo_scenario=insufficient&_demo_faults=order-rejected`
   //   貼給同事，同事打開就直接是那個情境。
   //
@@ -159,7 +159,7 @@ export function DemoConsole() {
           Demo
           {state.faults.length > 0 && (
             // 面板收起來時也要看得到「有故障開著」，
-            // 否則面試官會忘記自己開過，然後以為系統壞了。
+            // 否則很容易忘記自己開過，然後以為系統壞了。
             <span className="rounded-full bg-amber-400 px-1.5 text-xs font-bold text-slate-900">
               {state.faults.length}
             </span>
