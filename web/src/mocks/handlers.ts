@@ -175,7 +175,7 @@ export const handlers = [
     const unauthorised = requireLogin();
     if (unauthorised) return unauthorised;
 
-    const { positions, cashBalanceCents, snapshots } = mockDb.state;
+    const { positions, cashBalanceCents, snapshots, transactions } = mockDb.state;
 
     const totalCostBasisCents = positions.reduce((sum, p) => sum + p.costBasisCents, 0);
     // 以昨收計算 —— 與後端一致（後端沒有即時報價，市值由前端算）
@@ -183,6 +183,23 @@ export const handlers = [
       (sum, p) => sum + p.instrument.prevCloseCents * p.quantity,
       0,
     );
+
+    // ── 已實現損益 = 現金 + 持倉成本 − 淨入金 ★ ──────────────────
+    //
+    //   與後端 portfolio.service.ts 的公式逐字相同。
+    //   展開之後等於「賣出價差 − 手續費 − 證交稅 + 股利」。
+    //
+    //   ⚠️ 第一版這裡寫死 0，結果線上版顯示「已實現損益 NT$ 0」、
+    //      本機版卻有實際數字 —— 正是 README 說「兩邊數字完全一致」
+    //      要避免的那種分岔。假後端偷懶的地方，會變成兩套系統的證據。
+    //
+    //   `amount_cents` 本身帶正負號（入金為正、出金為負），
+    //   所以直接加總就是淨入金。
+    const netDepositCents = transactions
+      .filter((tx) => tx.type === 'DEPOSIT' || tx.type === 'WITHDRAWAL')
+      .reduce((sum, tx) => sum + tx.amountCents, 0);
+
+    const realizedPnlCents = cashBalanceCents + totalCostBasisCents - netDepositCents;
 
     // 今日損益 = 最後一天快照 − 前一天快照，與後端的 SQL 同義
     const last = snapshots.at(-1);
@@ -195,7 +212,7 @@ export const handlers = [
       marketValueCents,
       totalValueCents: cashBalanceCents + marketValueCents,
       totalCostBasisCents,
-      realizedPnlCents: 0,
+      realizedPnlCents,
       todayPnlCents,
     });
   }),
