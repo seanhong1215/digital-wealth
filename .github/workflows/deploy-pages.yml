@@ -34,7 +34,10 @@ name: 部署前端展示版
 
 on:
   push:
-    branches: [main]
+    # ⚠️ 這個 repo 的主分支是 master，不是 main。
+    #    寫錯的話 workflow 不會有任何反應 —— 沒有錯誤、沒有紀錄，
+    #    看起來就像 Actions 沒開，很難查。
+    branches: [master]
   # 手動觸發。改完 README 想重新部署、或想確認流程還能跑時用。
   workflow_dispatch:
 
